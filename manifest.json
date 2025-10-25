@@ -1,0 +1,21 @@
+{
+  "name": "Mala Counter",
+  "short_name": "Mala Counter",
+  "description": "A digital mala to help you count your mantras and prayers with focus and ease. Track your progress through 108 beads and multiple rounds in a serene and beautiful interface.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#fffbeb",
+  "theme_color": "#f59e0b",
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ]
+}
