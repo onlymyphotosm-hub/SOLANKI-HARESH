@@ -205,7 +205,7 @@ const App: React.FC = () => {
         return { ...prevCounts, beadCount: newBeadCount, targetReachedToday: prevCounts.targetReachedToday || shouldCelebrate };
       }
     });
-  }, [profile]);
+  }, [profile, activeProfile.beadsPerRound, activeProfile.dailyGoal]);
 
   const showResetConfirm = () => {
     setConfirmConfig({

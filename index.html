@@ -5,47 +5,1024 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Mala Counter</title>
     <!-- PWA -->
-    <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#fffbeb" />
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap" rel="stylesheet">
+    
+    <!-- React & Babel for in-browser JSX transpilation -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
     <!-- Google API Client & Identity Services -->
     <script src="https://apis.google.com/js/api.js"></script>
     <script src="https://accounts.google.com/gsi/client"></script>
+    
     <style>
       body {
         font-family: 'Manrope', sans-serif;
         transition: background-color 0.3s ease-in-out;
       }
     </style>
-  <script type="importmap">
+<script type="importmap">
 {
   "imports": {
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
     "react": "https://aistudiocdn.com/react@^19.2.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/"
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/"
   }
 }
 </script>
 </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/index.tsx"></script>
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then(registration => {
-              console.log('ServiceWorker registration successful with scope: ', registration.scope);
-            })
-            .catch(error => {
-              console.log('ServiceWorker registration failed: ', error);
-            });
+    
+    <script type="text/babel">
+      // themes.ts
+      const themes = {
+        amber: {
+          name: 'amber',
+          displayName: 'Amber',
+          previewColors: ['#fef3c7', '#fde68a', '#fbbf24', '#b45309'],
+          colors: {
+            metaThemeColor: '#fffbeb',
+            background: 'bg-amber-50',
+            textPrimary: 'text-stone-800',
+            textSecondary: 'text-stone-500',
+            textHeader: 'text-amber-800',
+            accent: 'bg-amber-200',
+            accentActive: 'group-active:bg-amber-300',
+            accentLight: 'bg-amber-100',
+            accentDark: 'text-amber-900',
+            progressBase: 'stroke-amber-200',
+            progressFill: 'stroke-amber-500',
+            buttonHover: 'hover:bg-amber-100',
+            modalBg: 'bg-amber-50',
+            modalHeaderBorder: 'border-amber-200',
+            listItemBackground: 'bg-white',
+            listItemBorder: 'border-amber-100',
+            confirmButton: 'bg-red-500 hover:bg-red-600',
+            cancelButton: 'bg-amber-200',
+            cancelButtonHover: 'hover:bg-amber-300',
+          }
+        },
+        forest: {
+          name: 'forest',
+          displayName: 'Forest',
+          previewColors: ['#f0fdf4', '#bbf7d0', '#4ade80', '#15803d'],
+          colors: {
+            metaThemeColor: '#ecfdf5',
+            background: 'bg-green-50',
+            textPrimary: 'text-gray-800',
+            textSecondary: 'text-gray-500',
+            textHeader: 'text-green-800',
+            accent: 'bg-green-200',
+            accentActive: 'group-active:bg-green-300',
+            accentLight: 'bg-green-100',
+            accentDark: 'text-green-900',
+            progressBase: 'stroke-green-200',
+            progressFill: 'stroke-green-500',
+            buttonHover: 'hover:bg-green-100',
+            modalBg: 'bg-green-50',
+            modalHeaderBorder: 'border-green-200',
+            listItemBackground: 'bg-white',
+            listItemBorder: 'border-green-100',
+            confirmButton: 'bg-red-500 hover:bg-red-600',
+            cancelButton: 'bg-green-200',
+            cancelButtonHover: 'hover:bg-green-300',
+          }
+        },
+        ocean: {
+          name: 'ocean',
+          displayName: 'Ocean',
+          previewColors: ['#f0f9ff', '#bae6fd', '#38bdf8', '#0369a1'],
+          colors: {
+            metaThemeColor: '#eff6ff',
+            background: 'bg-blue-50',
+            textPrimary: 'text-slate-800',
+            textSecondary: 'text-slate-500',
+            textHeader: 'text-blue-800',
+            accent: 'bg-blue-200',
+            accentActive: 'group-active:bg-blue-300',
+            accentLight: 'bg-blue-100',
+            accentDark: 'text-blue-900',
+            progressBase: 'stroke-blue-200',
+            progressFill: 'stroke-blue-500',
+            buttonHover: 'hover:bg-blue-100',
+            modalBg: 'bg-blue-50',
+            modalHeaderBorder: 'border-blue-200',
+            listItemBackground: 'bg-white',
+            listItemBorder: 'border-blue-100',
+            confirmButton: 'bg-red-500 hover:bg-red-600',
+            cancelButton: 'bg-blue-200',
+            cancelButtonHover: 'hover:bg-blue-300',
+          }
+        },
+        rose: {
+          name: 'rose',
+          displayName: 'Rose',
+          previewColors: ['#fff1f2', '#fecdd3', '#fb7185', '#be123c'],
+          colors: {
+            metaThemeColor: '#fff1f2',
+            background: 'bg-rose-50',
+            textPrimary: 'text-gray-800',
+            textSecondary: 'text-gray-500',
+            textHeader: 'text-rose-800',
+            accent: 'bg-rose-200',
+            accentActive: 'group-active:bg-rose-300',
+            accentLight: 'bg-rose-100',
+            accentDark: 'text-rose-900',
+            progressBase: 'stroke-rose-200',
+            progressFill: 'stroke-rose-500',
+            buttonHover: 'hover:bg-rose-100',
+            modalBg: 'bg-rose-50',
+            modalHeaderBorder: 'border-rose-200',
+            listItemBackground: 'bg-white',
+            listItemBorder: 'border-rose-100',
+            confirmButton: 'bg-red-500 hover:bg-red-600',
+            cancelButton: 'bg-rose-200',
+            cancelButtonHover: 'hover:bg-rose-300',
+          }
+        }
+      };
+
+      // constants.ts
+      const LOCAL_STORAGE_PROFILE_KEY = 'malaCounterProfile';
+      const PROFILES = {
+        OM: {
+          name: 'OM',
+          beadsPerRound: 108,
+          dailyGoal: { type: 'rounds', value: 1 },
+          storageKeyPrefix: 'OM',
+        },
+        Satnaam: {
+          name: 'Satnaam',
+          beadsPerRound: 108,
+          dailyGoal: { type: 'beads', value: 1000 },
+          storageKeyPrefix: 'Satnaam',
+        }
+      };
+      const LOCAL_STORAGE_COUNTS_KEY = 'malaCounterDailyCounts';
+      const LOCAL_STORAGE_HISTORY_KEY = 'malaCounterHistory';
+      const LOCAL_STORAGE_THEME_KEY = 'malaCounterTheme';
+      const LOCAL_STORAGE_CUSTOM_SOUND_KEY = 'malaCounterCustomSound';
+      const BEAD_CLICK_SOUND = 'data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU2LjQwLjEwMQAAAAAAAAAAAAAA//tAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWVoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaXRoaX-..';
+      const ROUND_COMPLETE_SOUND = 'data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU2LjQwLjEwMQAAAAAAAAAAAAAA//tAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEluZm8AAAAPAAAAAwAAAbJodHRwOi8vd3d3Lm1lbG9keWxvLmNvbS9NL2ZyZWUtZG9uZ2NoaW1lc291bmRlZmZlY3RzLzE0NzM0L2NoaW1lczEwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA-..';
+
+      // components/CircularProgress.tsx
+      const CircularProgress = ({ progress, size, strokeWidth, baseColor, fillColor }) => {
+        const center = size / 2;
+        const radius = center - strokeWidth / 2;
+        const circumference = 2 * Math.PI * radius;
+        const offset = circumference * (1 - progress);
+
+        return (
+          <svg width={size} height={size} className="transform -rotate-90">
+            <circle
+              cx={center}
+              cy={center}
+              r={radius}
+              strokeWidth={strokeWidth}
+              className={baseColor}
+              fill="transparent"
+            />
+            <circle
+              cx={center}
+              cy={center}
+              r={radius}
+              strokeWidth={strokeWidth}
+              className={`${fillColor} transition-all duration-500 ease-out`}
+              fill="transparent"
+              strokeDasharray={circumference}
+              strokeDashoffset={offset}
+              strokeLinecap="round"
+            />
+          </svg>
+        );
+      };
+
+      // components/CelebrationModal.tsx
+      const CelebrationModal = ({ onClose, isOpen, theme }) => {
+        const colors = ['bg-yellow-400', 'bg-amber-500', 'bg-orange-400', 'bg-red-400'];
+        if (!isOpen) return null;
+
+        return (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-opacity duration-300"
+            onClick={onClose}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="celebration-title"
+          >
+            <div 
+              className={`relative ${theme.modalBg} p-8 md:p-12 rounded-2xl shadow-2xl text-center animate-fade-in-up transform scale-95 transition-transform duration-300`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h2 id="celebration-title" className={`text-4xl md:text-5xl font-bold ${theme.textHeader} mb-4 tracking-tight`}>
+                Congratulations!
+              </h2>
+              <p className={`text-lg ${theme.textPrimary}`}>
+                You've completed your daily goal.
+              </p>
+              <div className="absolute -top-10 -left-10 -right-10 -bottom-10 pointer-events-none overflow-hidden">
+                {[...Array(30)].map((_, i) => (
+                  <div 
+                    key={i} 
+                    className={`absolute rounded-full animate-fall ${colors[i % colors.length]}`}
+                    style={{
+                      width: `${Math.random() * 12 + 6}px`,
+                      height: `${Math.random() * 12 + 6}px`,
+                      left: `${Math.random() * 100}%`,
+                      animationDelay: `${Math.random() * 4}s`,
+                      animationDuration: `${Math.random() * 3 + 3}s`,
+                      opacity: Math.random() * 0.5 + 0.5,
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+             <style>{`
+              @keyframes fade-in-up {
+                0% { opacity: 0; transform: translateY(30px) scale(0.95); }
+                100% { opacity: 1; transform: translateY(0) scale(1); }
+              }
+              .animate-fade-in-up { animation: fade-in-up 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
+              
+              @keyframes fall {
+                0% { transform: translateY(-20vh) rotate(0deg); opacity: 1; }
+                100% { transform: translateY(120vh) rotate(720deg); opacity: 0; }
+              }
+              .animate-fall { animation: fall linear infinite; }
+            `}</style>
+          </div>
+        );
+      };
+
+      // components/HistoryModal.tsx
+      const HistoryModal = ({ history, onClose, isOpen, theme }) => {
+        if (!isOpen) return null;
+
+        return (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-opacity duration-300"
+            onClick={onClose}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="history-title"
+          >
+            <div 
+              className={`${theme.modalBg} rounded-lg shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col transform transition-all duration-300 scale-95 opacity-0 animate-modal-enter`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <header className={`p-4 border-b ${theme.modalHeaderBorder} flex justify-between items-center sticky top-0 ${theme.modalBg}/80 backdrop-blur-sm`}>
+                <h2 id="history-title" className={`text-2xl font-bold ${theme.textHeader}`}>Your Progress</h2>
+                <button onClick={onClose} className={`${theme.textSecondary} hover:${theme.textPrimary} p-2 rounded-full ${theme.buttonHover} transition-colors`} aria-label="Close history">
+                   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </header>
+              <main className="p-6 overflow-y-auto">
+                {history.length === 0 ? (
+                  <p className={`${theme.textSecondary} text-center py-8`}>No history yet. Start your first round!</p>
+                ) : (
+                  <ul className="space-y-3">
+                    {history.map((entry, index) => (
+                      <li key={index} className={`flex justify-between items-center p-4 ${theme.listItemBackground} rounded-lg shadow-sm border ${theme.listItemBorder}`}>
+                        <span className={`font-semibold ${theme.textPrimary}`}>{new Date(entry.date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                        <div className="text-right">
+                          <span className={`${theme.accentDark} font-bold text-lg`}>{entry.rounds}</span>
+                          <span className={`${theme.textSecondary} text-sm ml-1`}>{entry.rounds === 1 ? 'Round' : 'Rounds'}</span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </main>
+            </div>
+            <style>{`
+              @keyframes modal-enter {
+                to {
+                  opacity: 1;
+                  transform: scale(1);
+                }
+              }
+              .animate-modal-enter {
+                animation: modal-enter 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+              }
+            `}</style>
+          </div>
+        );
+      };
+
+      // components/ConfirmModal.tsx
+      const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, theme }) => {
+        if (!isOpen) return null;
+
+        const handleConfirmClick = () => {
+          onConfirm();
+          onClose();
+        };
+
+        return (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={onClose}
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="confirm-title"
+            aria-describedby="confirm-message"
+          >
+            <div
+              className={`${theme.modalBg} rounded-lg shadow-2xl w-full max-w-sm p-6 text-center animate-modal-enter`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h2 id="confirm-title" className={`text-2xl font-bold ${theme.textHeader} mb-2`}>{title}</h2>
+              <p id="confirm-message" className={`${theme.textPrimary} mb-6`}>{message}</p>
+              <div className="flex justify-center space-x-4">
+                <button
+                  onClick={onClose}
+                  className={`px-6 py-2 ${theme.textPrimary} ${theme.cancelButton} ${theme.cancelButtonHover} rounded-lg font-semibold transition-colors`}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmClick}
+                  className={`px-6 py-2 text-white ${theme.confirmButton} rounded-lg font-semibold transition-colors`}
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
+             <style>{`
+              @keyframes modal-enter {
+                from { opacity: 0; transform: scale(0.95); }
+                to { opacity: 1; transform: scale(1); }
+              }
+              .animate-modal-enter {
+                animation: modal-enter 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+              }
+            `}</style>
+          </div>
+        );
+      };
+
+      // components/DataModal.tsx
+      const DataModal = ({
+        isOpen,
+        onClose,
+        onSignIn,
+        onBackup,
+        onRestore,
+        isSignedIn,
+        isBackingUp,
+        isRestoring,
+        statusMessage,
+        theme
+      }) => {
+        if (!isOpen) return null;
+
+        return (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={onClose}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="data-title"
+          >
+            <div
+              className={`${theme.modalBg} rounded-lg shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col transform transition-all duration-300 scale-95 opacity-0 animate-modal-enter`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <header className={`p-4 border-b ${theme.modalHeaderBorder} flex justify-between items-center`}>
+                <h2 id="data-title" className={`text-2xl font-bold ${theme.textHeader}`}>Data Backup & Restore</h2>
+                <button onClick={onClose} className={`${theme.textSecondary} hover:${theme.textPrimary} p-2 rounded-full ${theme.buttonHover} transition-colors`} aria-label="Close data management">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </header>
+              <main className="p-6 text-center">
+                {!isSignedIn ? (
+                  <div>
+                    <p className={`${theme.textPrimary} mb-4`}>Sign in with your Google account to back up your progress to Google Drive.</p>
+                    <button
+                      onClick={onSignIn}
+                      className="inline-flex items-center justify-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-md transition-colors"
+                    >
+                      <svg className="w-5 h-5 mr-2" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M44.5 24c0-1.5-.1-2.9-.4-4.4H24v8.5h11.5c-.5 2.8-2 5.2-4.1 6.8v5.5h7.1c4.2-3.8 6.6-9.4 6.6-16.4z" fill="#4285F4"/><path d="M24 48c6.5 0 11.9-2.1 15.8-5.7l-7.1-5.5c-2.1 1.4-4.9 2.3-7.7 2.3-5.9 0-11-3.9-12.8-9.2H3.9v5.7C7.9 42.6 15.4 48 24 48z" fill="#34A853"/><path d="M11.2 28.8c-.4-.9-.6-2-.6-3.1s.2-2.2.6-3.1V16.9H3.9C2.1 20.3 1 24.5 1 28.8s1.1 8.5 3.9 11.9l7.3-5.7z" fill="#FBBC05"/><path d="M24 9.8c3.5 0 6.6 1.2 9.1 3.6l6.3-6.3C35.9 2.2 30.5 0 24 0 15.4 0 7.9 5.4 3.9 12.6l7.3 5.7c1.8-5.3 6.9-9.5 12.8-9.5z" fill="#EA4335"/></svg>
+                      Sign in with Google
+                    </button>
+                    <p className="text-xs text-stone-400 mt-4">This will only create a single hidden file in your Google Drive.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                     <p className={`${theme.textPrimary}`}>Your data is backed up to a private folder in your Google Drive.</p>
+                    <button
+                      onClick={onBackup}
+                      disabled={isBackingUp || isRestoring}
+                      className="w-full px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg shadow-md transition-colors disabled:bg-gray-400"
+                    >
+                      {isBackingUp ? 'Backing Up...' : 'Backup to Drive'}
+                    </button>
+                    <button
+                      onClick={onRestore}
+                      disabled={isBackingUp || isRestoring}
+                      className="w-full px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-lg shadow-md transition-colors disabled:bg-gray-400"
+                    >
+                      {isRestoring ? 'Restoring...' : 'Restore from Drive'}
+                    </button>
+                  </div>
+                )}
+                {statusMessage && (
+                  <p className={`${theme.textPrimary} mt-4 font-medium`}>{statusMessage}</p>
+                )}
+              </main>
+            </div>
+            <style>{`
+              @keyframes modal-enter {
+                to {
+                  opacity: 1;
+                  transform: scale(1);
+                }
+              }
+              .animate-modal-enter {
+                animation: modal-enter 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+              }
+            `}</style>
+          </div>
+        );
+      };
+
+      // components/SettingsModal.tsx
+      const SettingsModal = ({ 
+          isOpen, 
+          onClose, 
+          currentTheme, 
+          onThemeChange, 
+          theme,
+          onSoundUpload,
+          onResetSound,
+          isCustomSoundSet
+      }) => {
+        if (!isOpen) return null;
+
+        const fileInputRef = React.useRef(null);
+
+        const handleFileChange = (event) => {
+          const file = event.target.files?.[0];
+          if (file) {
+            onSoundUpload(file);
+          }
+        };
+
+        const handleUploadClick = () => {
+          fileInputRef.current?.click();
+        };
+
+        return (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={onClose}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="settings-title"
+          >
+            <div
+              className={`${theme.modalBg} rounded-lg shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col transform transition-all duration-300 scale-95 opacity-0 animate-modal-enter`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <header className={`p-4 border-b ${theme.modalHeaderBorder} flex justify-between items-center sticky top-0 ${theme.modalBg}/80 backdrop-blur-sm`}>
+                <h2 id="settings-title" className={`text-2xl font-bold ${theme.textHeader}`}>Settings</h2>
+                <button onClick={onClose} className={`${theme.textSecondary} hover:${theme.textPrimary} p-2 rounded-full ${theme.buttonHover} transition-colors`} aria-label="Close settings">
+                   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </header>
+              <main className="p-6 overflow-y-auto">
+                  <div className="space-y-4">
+                      <h3 className={`text-lg font-semibold ${theme.textPrimary}`}>Color Theme</h3>
+                      <div className="grid grid-cols-2 gap-4">
+                          {Object.values(themes).map(themeOption => (
+                              <button 
+                                  key={themeOption.name} 
+                                  onClick={() => onThemeChange(themeOption.name)}
+                                  className={`p-4 rounded-lg border-2 transition-all ${currentTheme === themeOption.name ? 'border-blue-500 shadow-md' : `${theme.listItemBorder} hover:border-gray-300`}`}
+                                  aria-pressed={currentTheme === themeOption.name}
+                              >
+                                  <span className={`block mb-2 font-semibold ${theme.textPrimary}`}>{themeOption.displayName}</span>
+                                  <div className="flex h-8 w-full rounded overflow-hidden">
+                                      {themeOption.previewColors.map((color, index) => (
+                                          <div key={index} style={{ backgroundColor: color, flex: 1 }} />
+                                      ))}
+                                  </div>
+                              </button>
+                          ))}
+                      </div>
+                  </div>
+
+                  <div className={`border-t ${theme.modalHeaderBorder} my-6`}></div>
+
+                  <div className="space-y-4">
+                      <h3 className={`text-lg font-semibold ${theme.textPrimary}`}>Bead Sound</h3>
+                      <p className={`${theme.textSecondary} text-sm`}>
+                          Current: {isCustomSoundSet ? 'Custom Sound' : 'Default Sound'}
+                      </p>
+                      <div className="flex items-center space-x-2">
+                          <input
+                              type="file"
+                              accept="audio/*"
+                              ref={fileInputRef}
+                              onChange={handleFileChange}
+                              className="hidden"
+                              aria-hidden="true"
+                              id="sound-upload-input"
+                          />
+                          <button
+                              onClick={handleUploadClick}
+                              className={`w-full text-center px-4 py-2 ${theme.textPrimary} ${theme.cancelButton} ${theme.cancelButtonHover} rounded-lg font-semibold transition-colors`}
+                              aria-label="Upload a custom bead sound"
+                          >
+                              Upload Sound
+                          </button>
+                          <button
+                              onClick={onResetSound}
+                              disabled={!isCustomSoundSet}
+                              className={`px-4 py-2 ${theme.textSecondary} hover:${theme.textPrimary} ${theme.buttonHover} rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
+                              aria-label="Reset bead sound to default"
+                          >
+                              Reset
+                          </button>
+                      </div>
+                  </div>
+              </main>
+            </div>
+            <style>{`
+              @keyframes modal-enter { to { opacity: 1; transform: scale(1); } }
+              .animate-modal-enter { animation: modal-enter 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
+            `}</style>
+          </div>
+        );
+      };
+
+      // App.tsx
+      const App = () => {
+        const { useState, useRef, useCallback, useEffect } = React;
+
+        const [profile, setProfile] = useState(() => {
+          const savedProfile = localStorage.getItem(LOCAL_STORAGE_PROFILE_KEY);
+          return (savedProfile && (savedProfile === 'OM' || savedProfile === 'Satnaam')) ? savedProfile : 'OM';
         });
+        
+        const [counts, setCounts] = useState({
+          beadCount: 0,
+          roundCount: 0,
+          lastVisitDate: new Date().toISOString().slice(0, 10),
+          targetReachedToday: false,
+        });
+        const [history, setHistory] = useState([]);
+        const [themeName, setThemeName] = useState(localStorage.getItem(LOCAL_STORAGE_THEME_KEY) || 'amber');
+        const [beadSound, setBeadSound] = useState(BEAD_CLICK_SOUND);
+        const [showCelebration, setShowCelebration] = useState(false);
+        const [showHistory, setShowHistory] = useState(false);
+        const [showData, setShowData] = useState(false);
+        const [showConfirm, setShowConfirm] = useState(false);
+        const [showSettings, setShowSettings] = useState(false);
+        const [confirmConfig, setConfirmConfig] = useState({title: '', message: '', onConfirm: () => {}});
+        
+        const beadAudioRef = useRef(null);
+        const roundAudioRef = useRef(null);
+
+        // Google Auth state
+        const [tokenClient, setTokenClient] = useState(null);
+        const [isSignedIn, setIsSignedIn] = useState(false);
+        const [apiReady, setApiReady] = useState(false);
+        
+        // UI state for data modal
+        const [isBackingUp, setIsBackingUp] = useState(false);
+        const [isRestoring, setIsRestoring] = useState(false);
+        const [statusMessage, setStatusMessage] = useState('');
+        
+        const activeTheme = themes[themeName];
+        const activeProfile = PROFILES[profile];
+        
+        const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+        const API_KEY = process.env.API_KEY;
+        const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
+        const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
+        const BACKUP_FILE_NAME_BASE = 'mala_counter_backup.json';
+
+        // Save profile to localStorage
+        useEffect(() => {
+          localStorage.setItem(LOCAL_STORAGE_PROFILE_KEY, profile);
+        }, [profile]);
+        
+        // Load data from localStorage on initial render or profile change
+        useEffect(() => {
+          const customSound = localStorage.getItem(LOCAL_STORAGE_CUSTOM_SOUND_KEY);
+          setBeadSound(customSound || BEAD_CLICK_SOUND);
+          roundAudioRef.current = new Audio(ROUND_COMPLETE_SOUND);
+
+          const countsKey = `${activeProfile.storageKeyPrefix}_${LOCAL_STORAGE_COUNTS_KEY}`;
+          const historyKey = `${activeProfile.storageKeyPrefix}_${LOCAL_STORAGE_HISTORY_KEY}`;
+          
+          const todayStr = new Date().toISOString().slice(0, 10);
+          const savedDataRaw = localStorage.getItem(countsKey);
+          const savedHistoryRaw = localStorage.getItem(historyKey);
+          
+          const loadedHistory = savedHistoryRaw ? JSON.parse(savedHistoryRaw) : [];
+          
+          if (savedDataRaw) {
+            const savedData = JSON.parse(savedDataRaw);
+            
+            if (savedData.lastVisitDate !== todayStr) {
+              if (savedData.roundCount > 0 || savedData.beadCount > 0) {
+                  const yesterdayEntry = {
+                      date: savedData.lastVisitDate,
+                      rounds: savedData.roundCount,
+                  };
+                  if (!loadedHistory.some(h => h.date === yesterdayEntry.date)) {
+                      const newHistory = [yesterdayEntry, ...loadedHistory];
+                      setHistory(newHistory);
+                      localStorage.setItem(historyKey, JSON.stringify(newHistory));
+                  }
+              }
+              setCounts({ beadCount: 0, roundCount: 0, lastVisitDate: todayStr, targetReachedToday: false });
+            } else {
+              setCounts(savedData);
+            }
+          } else {
+              setCounts({ beadCount: 0, roundCount: 0, lastVisitDate: todayStr, targetReachedToday: false });
+          }
+          setHistory(loadedHistory);
+        }, [profile]);
+        
+        // Update bead audio object when sound source changes
+        useEffect(() => {
+          beadAudioRef.current = new Audio(beadSound);
+        }, [beadSound]);
+
+        // Save theme to localStorage and update meta tag/body class
+        useEffect(() => {
+          localStorage.setItem(LOCAL_STORAGE_THEME_KEY, themeName);
+          const metaThemeColor = document.querySelector("meta[name=theme-color]");
+          if (metaThemeColor) {
+            metaThemeColor.setAttribute("content", activeTheme.colors.metaThemeColor);
+          }
+          document.body.className = activeTheme.colors.background;
+        }, [themeName, activeTheme]);
+        
+        // Initialize Google API Client
+        useEffect(() => {
+            const gapiLoad = () => window.gapi.load('client', () => {
+                window.gapi.client.init({
+                    apiKey: API_KEY,
+                    discoveryDocs: [DISCOVERY_DOC],
+                }).then(() => {
+                    const client = window.google.accounts.oauth2.initTokenClient({
+                        client_id: CLIENT_ID,
+                        scope: SCOPES,
+                        callback: (tokenResponse) => {
+                            if (tokenResponse && tokenResponse.access_token) {
+                                window.gapi.client.setToken(tokenResponse);
+                                setIsSignedIn(true);
+                            }
+                        },
+                    });
+                    setTokenClient(client);
+                    setApiReady(true);
+                });
+            });
+            if (window.gapi && window.google) gapiLoad();
+        }, []);
+
+        // Save counts to localStorage whenever they change
+        useEffect(() => {
+          const countsKey = `${activeProfile.storageKeyPrefix}_${LOCAL_STORAGE_COUNTS_KEY}`;
+          localStorage.setItem(countsKey, JSON.stringify(counts));
+        }, [counts, profile]);
+
+        const handleBeadIncrement = useCallback(() => {
+          if (beadAudioRef.current) {
+            beadAudioRef.current.currentTime = 0;
+            beadAudioRef.current.play().catch(e => console.error("Error playing sound:", e));
+          }
+          if (window.navigator && window.navigator.vibrate) window.navigator.vibrate(50);
+
+          setCounts(prevCounts => {
+            const newBeadCount = prevCounts.beadCount + 1;
+            let shouldCelebrate = false;
+
+            if (newBeadCount >= activeProfile.beadsPerRound) {
+              const newRoundCount = prevCounts.roundCount + 1;
+              setTimeout(() => { roundAudioRef.current?.play().catch(e => console.error("Error playing sound:", e)); }, 50);
+
+              const totalBeadsAfterRound = newRoundCount * activeProfile.beadsPerRound;
+              if (activeProfile.dailyGoal.type === 'rounds') {
+                if (newRoundCount >= activeProfile.dailyGoal.value && !prevCounts.targetReachedToday) { shouldCelebrate = true; }
+              } else { // 'beads'
+                if (totalBeadsAfterRound >= activeProfile.dailyGoal.value && !prevCounts.targetReachedToday) { shouldCelebrate = true; }
+              }
+
+              if (shouldCelebrate) {
+                setShowCelebration(true);
+                setTimeout(() => setShowCelebration(false), 4000);
+              }
+              return { ...prevCounts, beadCount: 0, roundCount: newRoundCount, targetReachedToday: prevCounts.targetReachedToday || shouldCelebrate };
+            } else {
+              const totalBeadsMidRound = prevCounts.roundCount * activeProfile.beadsPerRound + newBeadCount;
+              if (activeProfile.dailyGoal.type === 'beads' && totalBeadsMidRound >= activeProfile.dailyGoal.value && !prevCounts.targetReachedToday) {
+                  shouldCelebrate = true;
+              }
+
+              if (shouldCelebrate) {
+                setShowCelebration(true);
+                setTimeout(() => setShowCelebration(false), 4000);
+              }
+              return { ...prevCounts, beadCount: newBeadCount, targetReachedToday: prevCounts.targetReachedToday || shouldCelebrate };
+            }
+          });
+        }, [profile, activeProfile.beadsPerRound, activeProfile.dailyGoal]);
+
+        const showResetConfirm = () => {
+          setConfirmConfig({
+              title: 'Reset Progress?',
+              message: "Are you sure you want to reset today's progress? This can't be undone.",
+              onConfirm: () => {
+                  setCounts(prev => ({ ...prev, beadCount: 0, roundCount: 0, targetReachedToday: false }));
+              },
+          });
+          setShowConfirm(true);
+        };
+        
+        const handleSoundUpload = (file) => {
+          if (file && file.type.startsWith('audio/')) {
+              const reader = new FileReader();
+              reader.onload = (e) => {
+                  const dataUrl = e.target?.result;
+                  if (dataUrl) {
+                      localStorage.setItem(LOCAL_STORAGE_CUSTOM_SOUND_KEY, dataUrl);
+                      setBeadSound(dataUrl);
+                  }
+              };
+              reader.readAsDataURL(file);
+          } else {
+              alert("Please select a valid audio file.");
+          }
+        };
+
+        const handleResetSound = () => {
+          localStorage.removeItem(LOCAL_STORAGE_CUSTOM_SOUND_KEY);
+          setBeadSound(BEAD_CLICK_SOUND);
+        };
+
+        // --- Google Drive Functions ---
+        const handleSignIn = () => { if (tokenClient) tokenClient.requestAccessToken(); };
+
+        const getFileId = async () => {
+            const backupFileName = `${activeProfile.name}_${BACKUP_FILE_NAME_BASE}`;
+            const response = await window.gapi.client.drive.files.list({
+                spaces: 'appDataFolder', fields: 'files(id, name)', q: `name='${backupFileName}'`,
+            });
+            return (response.result.files && response.result.files.length > 0) ? response.result.files[0].id : null;
+        };
+
+        const handleBackup = async () => {
+            if (!isSignedIn) { setStatusMessage('Please sign in first.'); return; }
+            setIsBackingUp(true); setStatusMessage('Backing up...');
+            
+            const backupData = { counts, history };
+            const file = new Blob([JSON.stringify(backupData)], { type: 'application/json' });
+            const fileId = await getFileId();
+            const backupFileName = `${activeProfile.name}_${BACKUP_FILE_NAME_BASE}`;
+            
+            const formData = new FormData();
+            formData.append('metadata', new Blob([JSON.stringify({ name: backupFileName })], { type: 'application/json' }));
+            formData.append('file', file);
+
+            try {
+                await window.gapi.client.request({
+                    path: `/upload/drive/v3/files${fileId ? `/${fileId}` : ''}`,
+                    method: fileId ? 'PATCH' : 'POST',
+                    params: { uploadType: 'multipart' },
+                    body: formData,
+                });
+                setStatusMessage('Backup successful!');
+            } catch (error) {
+                setStatusMessage('Backup failed. Please try again.');
+                console.error("Backup error:", error);
+            } finally {
+                setIsBackingUp(false);
+                setTimeout(() => setStatusMessage(''), 3000);
+            }
+        };
+
+        const handleRestore = async () => {
+            if (!isSignedIn) { setStatusMessage('Please sign in first.'); return; }
+            setIsRestoring(true); setStatusMessage('Restoring...');
+            
+            const fileId = await getFileId();
+            if (!fileId) {
+                setStatusMessage('No backup file found.');
+                setIsRestoring(false);
+                setTimeout(() => setStatusMessage(''), 3000);
+                return;
+            }
+
+            try {
+                const response = await window.gapi.client.drive.files.get({ fileId: fileId, alt: 'media' });
+                const backupData = JSON.parse(response.body);
+                if (backupData && backupData.counts && backupData.history) {
+                    setCounts(backupData.counts);
+                    setHistory(backupData.history);
+                    const historyKey = `${activeProfile.storageKeyPrefix}_${LOCAL_STORAGE_HISTORY_KEY}`;
+                    localStorage.setItem(historyKey, JSON.stringify(backupData.history));
+                    setStatusMessage('Restore successful!');
+                    setShowData(false);
+                } else { throw new Error('Invalid backup file'); }
+            } catch (error) {
+                setStatusMessage('Restore failed. File may be corrupted.');
+                console.error("Restore error:", error);
+            } finally {
+                setIsRestoring(false);
+                setTimeout(() => setStatusMessage(''), 3000);
+            }
+        };
+
+        const showRestoreConfirm = () => {
+          setConfirmConfig({
+              title: 'Restore Data?',
+              message: "This will overwrite your current progress with the data from Google Drive. Are you sure?",
+              onConfirm: handleRestore,
+          });
+          setShowConfirm(true);
+        };
+        
+        const ProfileSwitcher = () => (
+          <div className={`flex items-center p-1 rounded-full ${activeTheme.colors.accentLight} shadow-inner`}>
+            {Object.keys(PROFILES).map(profileName => (
+              <button
+                key={profileName}
+                onClick={() => setProfile(profileName)}
+                className={`px-4 sm:px-6 py-2 text-sm sm:text-base font-bold rounded-full transition-all duration-300 ${profile === profileName ? `${activeTheme.colors.accent} ${activeTheme.colors.accentDark} shadow-md` : `${activeTheme.colors.textSecondary} hover:${activeTheme.colors.textPrimary}`}`}
+              >
+                {PROFILES[profileName].name}
+              </button>
+            ))}
+          </div>
+        );
+        
+        const goalText = profile === 'OM' 
+          ? `Daily goal: ${activeProfile.dailyGoal.value} round(s).`
+          : `Daily goal: ${activeProfile.dailyGoal.value} beads.`;
+
+        const totalBeadsToday = counts.roundCount * activeProfile.beadsPerRound + counts.beadCount;
+        const { progress, progressText } = (() => {
+            if (activeProfile.dailyGoal.type === 'rounds') {
+                return {
+                    progress: Math.min((counts.roundCount / activeProfile.dailyGoal.value) * 100, 100),
+                    progressText: `${counts.roundCount}/${activeProfile.dailyGoal.value}`
+                };
+            } else { // beads
+                return {
+                    progress: Math.min((totalBeadsToday / activeProfile.dailyGoal.value) * 100, 100),
+                    progressText: `${totalBeadsToday}/${activeProfile.dailyGoal.value}`
+                };
+            }
+        })();
+        const progressBaseBg = activeTheme.colors.progressBase.replace('stroke-', 'bg-');
+        const progressFillBg = activeTheme.colors.progressFill.replace('stroke-', 'bg-');
+
+        return (
+          <>
+            <div className={`min-h-screen w-full flex flex-col items-center justify-center p-4 ${activeTheme.colors.textPrimary} select-none`}>
+              <header className="absolute top-0 p-6 text-center w-full flex flex-col items-center">
+                <h1 className={`text-3xl font-bold ${activeTheme.colors.textHeader}`}>{activeProfile.name} Jaap</h1>
+                <p className={`${activeTheme.colors.textSecondary}`}>{goalText}</p>
+                <div className="mt-4"><ProfileSwitcher /></div>
+              </header>
+              
+              <main className="flex flex-col items-center justify-center text-center">
+                <div className="mb-8">
+                  <span className={`text-xl ${activeTheme.colors.textSecondary}`}>Round</span>
+                  <p className={`text-6xl font-bold ${activeTheme.colors.accentDark}`}>{counts.roundCount}</p>
+                </div>
+
+                <button
+                  onClick={handleBeadIncrement}
+                  className="relative group w-80 h-80 md:w-96 md:h-96 flex items-center justify-center rounded-full focus:outline-none focus:ring-4 focus:ring-amber-400 focus:ring-opacity-50 transition-transform duration-200 active:scale-95"
+                  aria-label="Increment bead count"
+                >
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <CircularProgress progress={counts.beadCount / activeProfile.beadsPerRound} size={window.innerWidth < 768 ? 256 : 320} strokeWidth={12} baseColor={activeTheme.colors.progressBase} fillColor={activeTheme.colors.progressFill} />
+                  </div>
+                  <div
+                    className={`w-56 h-56 md:w-72 md:h-72 ${activeTheme.colors.accent} rounded-full shadow-lg group-hover:shadow-xl ${activeTheme.colors.accentActive} transition-all duration-200 flex items-center justify-center`}
+                  >
+                    <span className={`text-7xl font-light ${activeTheme.colors.accentDark} tracking-tighter`}>{counts.beadCount}</span>
+                    <span className={`absolute bottom-16 md:bottom-20 text-lg ${activeTheme.colors.textSecondary}`}>/ {activeProfile.beadsPerRound}</span>
+                  </div>
+                </button>
+              </main>
+
+              <footer className="absolute bottom-0 left-0 right-0 w-full p-4 md:p-6 flex items-center justify-between">
+                  <div className="flex items-center space-x-1 md:space-x-2">
+                       <button
+                          onClick={showResetConfirm}
+                          className={`flex items-center space-x-2 px-3 py-2 ${activeTheme.colors.textSecondary} hover:${activeTheme.colors.textPrimary} ${activeTheme.colors.buttonHover} rounded-lg transition-colors`}
+                          aria-label="Reset counters for the day"
+                      >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 110 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" /></svg>
+                          <span className="hidden sm:inline">Reset</span>
+                      </button>
+                      <button
+                          onClick={() => setShowHistory(true)}
+                          className={`flex items-center space-x-2 px-3 py-2 ${activeTheme.colors.textSecondary} hover:${activeTheme.colors.textPrimary} ${activeTheme.colors.buttonHover} rounded-lg transition-colors`}
+                          aria-label="View history"
+                      >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.414-1.415L11 9.586V6z" clipRule="evenodd" /></svg>
+                          <span className="hidden sm:inline">History</span>
+                      </button>
+                      <button
+                              onClick={() => setShowData(true)}
+                              disabled={!apiReady}
+                              className={`flex items-center space-x-2 px-3 py-2 ${activeTheme.colors.textSecondary} hover:${activeTheme.colors.textPrimary} ${activeTheme.colors.buttonHover} rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
+                              aria-label="Manage data backup"
+                          >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M5 8a4 4 0 118 0v1a1 1 0 01-1 1H6a1 1 0 01-1-1V8zm2 0v1h4V8a2 2 0 10-4 0z"/><path d="M3 12a2 2 0 012-2h10a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5z"/></svg>
+                              <span className="hidden sm:inline">Data</span>
+                          </button>
+                          <button
+                              onClick={() => setShowSettings(true)}
+                              className={`flex items-center space-x-2 px-3 py-2 ${activeTheme.colors.textSecondary} hover:${activeTheme.colors.textPrimary} ${activeTheme.colors.buttonHover} rounded-lg transition-colors`}
+                              aria-label="Open settings"
+                          >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" /></svg>
+                              <span className="hidden sm:inline">Settings</span>
+                          </button>
+                  </div>
+                  <div className="flex items-center space-x-2" aria-label={`Daily goal progress`}>
+                      <div className={`w-16 h-2 ${progressBaseBg} rounded-full overflow-hidden`}>
+                          <div className={`h-full ${progressFillBg} transition-all duration-300 ease-in-out rounded-full`} style={{ width: `${progress}%` }}></div>
+                      </div>
+                      <span className={`text-sm font-medium ${activeTheme.colors.textSecondary}`}>
+                          {progressText}
+                      </span>
+                  </div>
+              </footer>
+            </div>
+            <CelebrationModal theme={activeTheme.colors} isOpen={showCelebration} onClose={() => setShowCelebration(false)} />
+            <HistoryModal theme={activeTheme.colors} history={history} isOpen={showHistory} onClose={() => setShowHistory(false)} />
+            <DataModal
+                theme={activeTheme.colors}
+                isOpen={showData}
+                onClose={() => setShowData(false)}
+                onSignIn={handleSignIn}
+                onBackup={handleBackup}
+                onRestore={showRestoreConfirm}
+                isSignedIn={isSignedIn}
+                isBackingUp={isBackingUp}
+                isRestoring={isRestoring}
+                statusMessage={statusMessage}
+            />
+            <ConfirmModal 
+                theme={activeTheme.colors}
+                isOpen={showConfirm}
+                onClose={() => setShowConfirm(false)}
+                onConfirm={confirmConfig.onConfirm}
+                title={confirmConfig.title}
+                message={confirmConfig.message}
+            />
+            <SettingsModal
+              isOpen={showSettings}
+              onClose={() => setShowSettings(false)}
+              currentTheme={themeName}
+              onThemeChange={setThemeName}
+              theme={activeTheme.colors}
+              onSoundUpload={handleSoundUpload}
+              onResetSound={handleResetSound}
+              isCustomSoundSet={beadSound !== BEAD_CLICK_SOUND}
+            />
+          </>
+        );
+      };
+
+      // index.tsx
+      const rootElement = document.getElementById('root');
+      if (!rootElement) {
+        throw new Error("Could not find root element to mount to");
       }
+
+      const root = ReactDOM.createRoot(rootElement);
+      root.render(
+        <React.StrictMode>
+          <App />
+        </React.StrictMode>
+      );
     </script>
   </body>
 </html>
