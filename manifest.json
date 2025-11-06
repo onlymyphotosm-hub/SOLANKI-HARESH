@@ -4,6 +4,7 @@
   "description": "A digital mala to help you count your mantras and prayers with focus and ease. Track your progress through 108 beads and multiple rounds in a serene and beautiful interface.",
   "start_url": ".",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#fffbeb",
   "theme_color": "#f59e0b",
   "icons": [

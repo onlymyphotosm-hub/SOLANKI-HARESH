@@ -1,7 +1,10 @@
-const CACHE_NAME = 'mala-counter-v1';
+const CACHE_NAME = 'mala-counter-v2';
 const ASSETS_TO_CACHE = [
   '/',
-  '/index.html'
+  '/index.html',
+  'https://unpkg.com/react@18/umd/react.development.js',
+  'https://unpkg.com/react-dom@18/umd/react-dom.development.js',
+  'https://unpkg.com/@babel/standalone/babel.min.js'
 ];
 
 // Install service worker

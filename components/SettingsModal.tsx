@@ -10,6 +10,8 @@ interface SettingsModalProps {
   onSoundUpload: (file: File) => void;
   onResetSound: () => void;
   isCustomSoundSet: boolean;
+  canInstall: boolean;
+  onInstall: () => void;
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ 
@@ -20,7 +22,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     theme,
     onSoundUpload,
     onResetSound,
-    isCustomSoundSet
+    isCustomSoundSet,
+    canInstall,
+    onInstall,
 }) => {
   if (!isOpen) return null;
 
@@ -113,6 +117,27 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     </button>
                 </div>
             </div>
+            {canInstall && (
+              <>
+                <div className={`border-t ${theme.modalHeaderBorder} my-6`}></div>
+                <div className="space-y-4">
+                  <h3 className={`text-lg font-semibold ${theme.textPrimary}`}>Install App</h3>
+                  <p className={`${theme.textSecondary} text-sm`}>
+                    Install this app on your device for quick access and offline use.
+                  </p>
+                  <button
+                    onClick={onInstall}
+                    className={`w-full flex items-center justify-center text-center px-4 py-2 ${theme.textPrimary} ${theme.cancelButton} ${theme.cancelButtonHover} rounded-lg font-semibold transition-colors`}
+                    aria-label="Install the application"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Install App
+                  </button>
+                </div>
+              </>
+            )}
         </main>
       </div>
       <style>{`

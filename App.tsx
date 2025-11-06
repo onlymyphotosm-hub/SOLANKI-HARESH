@@ -57,6 +57,7 @@ const App: React.FC = () => {
   const [confirmConfig, setConfirmConfig] = useState<{title: string, message: string, onConfirm: () => void}>({
       title: '', message: '', onConfirm: () => {},
   });
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
   
   const beadAudioRef = useRef<HTMLAudioElement | null>(null);
   const roundAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -73,6 +74,30 @@ const App: React.FC = () => {
   
   const activeTheme = themes[themeName];
   const activeProfile = PROFILES[profile];
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler);
+    };
+  }, []);
+
+  const handleInstallClick = () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    installPrompt.userChoice.then((choiceResult: { outcome: string }) => {
+      if (choiceResult.outcome === 'accepted') {
+        console.log('User accepted the A2HS prompt');
+      } else {
+        console.log('User dismissed the A2HS prompt');
+      }
+      setInstallPrompt(null);
+    });
+  };
 
   // Save profile to localStorage
   useEffect(() => {
@@ -465,6 +490,8 @@ const App: React.FC = () => {
         onSoundUpload={handleSoundUpload}
         onResetSound={handleResetSound}
         isCustomSoundSet={beadSound !== BEAD_CLICK_SOUND}
+        canInstall={!!installPrompt}
+        onInstall={handleInstallClick}
       />
     </>
   );
