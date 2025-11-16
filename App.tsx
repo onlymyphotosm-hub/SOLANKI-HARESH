@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { PROFILES, ProfileName, LOCAL_STORAGE_PROFILE_KEY, LOCAL_STORAGE_COUNTS_KEY, LOCAL_STORAGE_HISTORY_KEY, BEAD_CLICK_SOUND, ROUND_COMPLETE_SOUND, LOCAL_STORAGE_THEME_KEY, LOCAL_STORAGE_CUSTOM_SOUND_KEY } from './constants';
+import { PROFILES, ProfileName, LOCAL_STORAGE_PROFILE_KEY, LOCAL_STORAGE_COUNTS_KEY, LOCAL_STORAGE_HISTORY_KEY, BEAD_CLICK_SOUND, ROUND_COMPLETE_SOUND, LOCAL_STORAGE_THEME_KEY, LOCAL_STORAGE_CUSTOM_SOUND_KEY, LOCAL_STORAGE_STREAK_KEY } from './constants';
 import CircularProgress from './components/CircularProgress';
 import CelebrationModal from './components/CelebrationModal';
 import HistoryModal, { HistoryEntry } from './components/HistoryModal';
@@ -22,9 +22,15 @@ interface DayData {
   targetReachedToday: boolean;
 }
 
+interface StreakData {
+  count: number;
+  lastDate: string | null;
+}
+
 interface BackupData {
   counts: DayData;
   history: HistoryEntry[];
+  streak: StreakData;
 }
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
@@ -47,6 +53,7 @@ const App: React.FC = () => {
     targetReachedToday: false,
   });
   const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [streak, setStreak] = useState<StreakData>({ count: 0, lastDate: null });
   const [themeName, setThemeName] = useState<string>(localStorage.getItem(LOCAL_STORAGE_THEME_KEY) || 'amber');
   const [beadSound, setBeadSound] = useState<string>(BEAD_CLICK_SOUND);
   const [showCelebration, setShowCelebration] = useState<boolean>(false);
@@ -112,8 +119,23 @@ const App: React.FC = () => {
 
     const countsKey = `${activeProfile.storageKeyPrefix}_${LOCAL_STORAGE_COUNTS_KEY}`;
     const historyKey = `${activeProfile.storageKeyPrefix}_${LOCAL_STORAGE_HISTORY_KEY}`;
+    const streakKey = `${activeProfile.storageKeyPrefix}_${LOCAL_STORAGE_STREAK_KEY}`;
     
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    const todayStr = today.toISOString().slice(0, 10);
+    const yesterdayStr = yesterday.toISOString().slice(0, 10);
+
+    // Load and validate streak
+    const savedStreakRaw = localStorage.getItem(streakKey);
+    const savedStreak: StreakData = savedStreakRaw ? JSON.parse(savedStreakRaw) : { count: 0, lastDate: null };
+    if (savedStreak.lastDate !== todayStr && savedStreak.lastDate !== yesterdayStr) {
+      setStreak({ count: 0, lastDate: null });
+    } else {
+      setStreak(savedStreak);
+    }
+    
     const savedDataRaw = localStorage.getItem(countsKey);
     const savedHistoryRaw = localStorage.getItem(historyKey);
     
@@ -189,6 +211,12 @@ const App: React.FC = () => {
     localStorage.setItem(countsKey, JSON.stringify(counts));
   }, [counts, profile]);
 
+  // Save streak to localStorage whenever it changes
+  useEffect(() => {
+    const streakKey = `${activeProfile.storageKeyPrefix}_${LOCAL_STORAGE_STREAK_KEY}`;
+    localStorage.setItem(streakKey, JSON.stringify(streak));
+  }, [streak, profile]);
+
 
   const handleBeadIncrement = useCallback(() => {
     if (beadAudioRef.current) {
@@ -196,41 +224,57 @@ const App: React.FC = () => {
       beadAudioRef.current.play().catch(e => console.error("Error playing sound:", e));
     }
     if (window.navigator && window.navigator.vibrate) window.navigator.vibrate(50);
+    
+    const oldTargetReached = counts.targetReachedToday;
+    let newBeadCount = counts.beadCount + 1;
+    let newRoundCount = counts.roundCount;
 
-    setCounts(prevCounts => {
-      const newBeadCount = prevCounts.beadCount + 1;
-      let shouldCelebrate = false;
-
-      if (newBeadCount >= activeProfile.beadsPerRound) {
-        const newRoundCount = prevCounts.roundCount + 1;
+    if (newBeadCount >= activeProfile.beadsPerRound) {
+        newRoundCount += 1;
+        newBeadCount = 0;
         setTimeout(() => { roundAudioRef.current?.play().catch(e => console.error("Error playing sound:", e)); }, 50);
+    }
 
-        const totalBeadsAfterRound = newRoundCount * activeProfile.beadsPerRound;
-        if (activeProfile.dailyGoal.type === 'rounds') {
-          if (newRoundCount >= activeProfile.dailyGoal.value && !prevCounts.targetReachedToday) { shouldCelebrate = true; }
-        } else { // 'beads'
-          if (totalBeadsAfterRound >= activeProfile.dailyGoal.value && !prevCounts.targetReachedToday) { shouldCelebrate = true; }
-        }
+    const nextCounts = {
+        ...counts,
+        beadCount: newBeadCount,
+        roundCount: newRoundCount,
+    };
 
-        if (shouldCelebrate) {
-          setShowCelebration(true);
-          setTimeout(() => setShowCelebration(false), 4000);
-        }
-        return { ...prevCounts, beadCount: 0, roundCount: newRoundCount, targetReachedToday: prevCounts.targetReachedToday || shouldCelebrate };
-      } else {
-        const totalBeadsMidRound = prevCounts.roundCount * activeProfile.beadsPerRound + newBeadCount;
-        if (activeProfile.dailyGoal.type === 'beads' && totalBeadsMidRound >= activeProfile.dailyGoal.value && !prevCounts.targetReachedToday) {
+    let shouldCelebrate = false;
+    const totalBeadsToday = nextCounts.roundCount * activeProfile.beadsPerRound + nextCounts.beadCount;
+    
+    if (activeProfile.dailyGoal.type === 'rounds') {
+        if (nextCounts.roundCount >= activeProfile.dailyGoal.value && !oldTargetReached) {
             shouldCelebrate = true;
         }
-
-        if (shouldCelebrate) {
-          setShowCelebration(true);
-          setTimeout(() => setShowCelebration(false), 4000);
+    } else { // beads
+        if (totalBeadsToday >= activeProfile.dailyGoal.value && !oldTargetReached) {
+            shouldCelebrate = true;
         }
-        return { ...prevCounts, beadCount: newBeadCount, targetReachedToday: prevCounts.targetReachedToday || shouldCelebrate };
-      }
-    });
-  }, [profile, activeProfile.beadsPerRound, activeProfile.dailyGoal]);
+    }
+    
+    if (shouldCelebrate) {
+        nextCounts.targetReachedToday = true;
+        setShowCelebration(true);
+        setTimeout(() => setShowCelebration(false), 4000);
+        
+        const todayStr = new Date().toISOString().slice(0, 10);
+        setStreak(prevStreak => {
+            if (prevStreak.lastDate === todayStr) return prevStreak;
+            
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayStr = yesterday.toISOString().slice(0, 10);
+            
+            const newCount = prevStreak.lastDate === yesterdayStr ? prevStreak.count + 1 : 1;
+            return { count: newCount, lastDate: todayStr };
+        });
+    }
+    
+    setCounts(nextCounts);
+
+  }, [counts, profile, activeProfile.beadsPerRound, activeProfile.dailyGoal]);
 
   const showResetConfirm = () => {
     setConfirmConfig({
@@ -264,7 +308,28 @@ const App: React.FC = () => {
     setBeadSound(BEAD_CLICK_SOUND);
   };
 
-  // --- Google Drive Functions ---
+  const applyRestoredData = (backupData: BackupData) => {
+    if (backupData && backupData.counts && backupData.history && backupData.streak) {
+        setCounts(backupData.counts);
+        setHistory(backupData.history);
+        setStreak(backupData.streak);
+        
+        // Also update local storage to persist
+        const countsKey = `${activeProfile.storageKeyPrefix}_${LOCAL_STORAGE_COUNTS_KEY}`;
+        const historyKey = `${activeProfile.storageKeyPrefix}_${LOCAL_STORAGE_HISTORY_KEY}`;
+        const streakKey = `${activeProfile.storageKeyPrefix}_${LOCAL_STORAGE_STREAK_KEY}`;
+        localStorage.setItem(countsKey, JSON.stringify(backupData.counts));
+        localStorage.setItem(historyKey, JSON.stringify(backupData.history));
+        localStorage.setItem(streakKey, JSON.stringify(backupData.streak));
+
+        setStatusMessage('Restore successful!');
+        setShowData(false);
+    } else {
+        throw new Error('Invalid backup file format.');
+    }
+  }
+
+  // --- Data Functions ---
   const handleSignIn = () => { if (tokenClient) tokenClient.requestAccessToken(); };
 
   const getFileId = async (): Promise<string | null> => {
@@ -279,7 +344,7 @@ const App: React.FC = () => {
       if (!isSignedIn) { setStatusMessage('Please sign in first.'); return; }
       setIsBackingUp(true); setStatusMessage('Backing up...');
       
-      const backupData: BackupData = { counts, history };
+      const backupData: BackupData = { counts, history, streak };
       const file = new Blob([JSON.stringify(backupData)], { type: 'application/json' });
       const fileId = await getFileId();
       const backupFileName = `${activeProfile.name}_${BACKUP_FILE_NAME_BASE}`;
@@ -320,14 +385,7 @@ const App: React.FC = () => {
       try {
           const response = await window.gapi.client.drive.files.get({ fileId: fileId, alt: 'media' });
           const backupData: BackupData = JSON.parse(response.body);
-          if (backupData && backupData.counts && backupData.history) {
-              setCounts(backupData.counts);
-              setHistory(backupData.history);
-              const historyKey = `${activeProfile.storageKeyPrefix}_${LOCAL_STORAGE_HISTORY_KEY}`;
-              localStorage.setItem(historyKey, JSON.stringify(backupData.history));
-              setStatusMessage('Restore successful!');
-              setShowData(false);
-          } else { throw new Error('Invalid backup file'); }
+          applyRestoredData(backupData);
       } catch (error) {
           setStatusMessage('Restore failed. File may be corrupted.');
           console.error("Restore error:", error);
@@ -337,15 +395,65 @@ const App: React.FC = () => {
       }
   };
 
-  const showRestoreConfirm = () => {
+  const showRestoreConfirm = (onConfirmAction: () => void, title: string, message: string) => {
     setConfirmConfig({
-        title: 'Restore Data?',
-        message: "This will overwrite your current progress with the data from Google Drive. Are you sure?",
-        onConfirm: handleRestore,
+        title,
+        message,
+        onConfirm: onConfirmAction,
     });
     setShowConfirm(true);
   };
   
+  const handleExportToFile = () => {
+    try {
+      const backupData: BackupData = { counts, history, streak };
+      const jsonString = JSON.stringify(backupData, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const href = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = href;
+      const date = new Date().toISOString().slice(0, 10);
+      link.download = `mala_backup_${activeProfile.name}_${date}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(href);
+      setStatusMessage('Exported successfully!');
+    } catch (error) {
+      console.error("Export failed:", error);
+      setStatusMessage('Export failed.');
+    } finally {
+      setTimeout(() => setStatusMessage(''), 3000);
+    }
+  };
+
+  const handleImportFromFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const text = e.target?.result as string;
+        const data = JSON.parse(text);
+        if (!data.counts || !data.history || !data.streak) {
+          throw new Error("Invalid file content");
+        }
+        showRestoreConfirm(
+          () => applyRestoredData(data), 
+          'Restore from File?', 
+          'This will overwrite your current progress. Are you sure?'
+        );
+      } catch (error) {
+        console.error('Error reading file for restore:', error);
+        setStatusMessage('Invalid or corrupted backup file.');
+        setTimeout(() => setStatusMessage(''), 3000);
+      }
+    };
+    reader.onerror = () => {
+        setStatusMessage('Failed to read file.');
+        setTimeout(() => setStatusMessage(''), 3000);
+    }
+    reader.readAsText(file);
+  };
+
   const ProfileSwitcher = () => (
     <div className={`flex items-center p-1 rounded-full ${activeTheme.colors.accentLight} shadow-inner`}>
       {(Object.keys(PROFILES) as ProfileName[]).map(profileName => (
@@ -391,9 +499,20 @@ const App: React.FC = () => {
         </header>
         
         <main className="flex flex-col items-center justify-center text-center">
-          <div className="mb-8">
-            <span className={`text-xl ${activeTheme.colors.textSecondary}`}>Round</span>
-            <p className={`text-6xl font-bold ${activeTheme.colors.accentDark}`}>{counts.roundCount}</p>
+          <div className="flex items-end justify-center space-x-12 mb-8">
+            <div>
+              <span className={`text-xl ${activeTheme.colors.textSecondary}`}>Round</span>
+              <p className={`text-6xl font-bold ${activeTheme.colors.accentDark}`}>{counts.roundCount}</p>
+            </div>
+            {streak.count > 0 && (
+              <div className="text-center">
+                <span className={`text-xl ${activeTheme.colors.textSecondary}`}>Streak</span>
+                <p className={`text-6xl font-bold ${activeTheme.colors.accentDark} flex items-center`}>
+                  {streak.count}
+                  <span role="img" aria-label="Streak" className="text-5xl ml-1">🔥</span>
+                </p>
+              </div>
+            )}
           </div>
 
           <button
@@ -467,11 +586,13 @@ const App: React.FC = () => {
           onClose={() => setShowData(false)}
           onSignIn={handleSignIn}
           onBackup={handleBackup}
-          onRestore={showRestoreConfirm}
+          onRestore={() => showRestoreConfirm(handleRestore, 'Restore from Drive?', 'This will overwrite your current progress with data from Google Drive. Are you sure?')}
           isSignedIn={isSignedIn}
           isBackingUp={isBackingUp}
           isRestoring={isRestoring}
           statusMessage={statusMessage}
+          onExportToFile={handleExportToFile}
+          onImportFromFile={handleImportFromFile}
       />
       <ConfirmModal 
           theme={activeTheme.colors}
