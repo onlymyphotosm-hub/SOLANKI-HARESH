@@ -1,19 +1,12 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { PROFILES, ProfileName, LOCAL_STORAGE_PROFILE_KEY, LOCAL_STORAGE_COUNTS_KEY, LOCAL_STORAGE_HISTORY_KEY, BEAD_CLICK_SOUND, ROUND_COMPLETE_SOUND, LOCAL_STORAGE_THEME_KEY, LOCAL_STORAGE_CUSTOM_SOUND_KEY, LOCAL_STORAGE_STREAK_KEY } from './constants';
 import CircularProgress from './components/CircularProgress';
 import CelebrationModal from './components/CelebrationModal';
 import HistoryModal, { HistoryEntry } from './components/HistoryModal';
-import DataModal from './components/DataModal';
 import ConfirmModal from './components/ConfirmModal';
 import SettingsModal from './components/SettingsModal';
 import { themes } from './themes';
-
-declare global {
-  interface Window {
-    gapi: any;
-    google: any;
-  }
-}
 
 interface DayData {
   beadCount: number;
@@ -27,23 +20,10 @@ interface StreakData {
   lastDate: string | null;
 }
 
-interface BackupData {
-  counts: DayData;
-  history: HistoryEntry[];
-  streak: StreakData;
-}
-
-const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-const API_KEY = process.env.API_KEY;
-const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
-const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
-const BACKUP_FILE_NAME_BASE = 'mala_counter_backup.json';
-
-
 const App: React.FC = () => {
   const [profile, setProfile] = useState<ProfileName>(() => {
     const savedProfile = localStorage.getItem(LOCAL_STORAGE_PROFILE_KEY);
-    return (savedProfile && (savedProfile === 'OM' || savedProfile === 'Satnaam')) ? savedProfile : 'OM';
+    return (savedProfile && Object.keys(PROFILES).includes(savedProfile)) ? (savedProfile as ProfileName) : 'OM';
   });
   
   const [counts, setCounts] = useState<DayData>({
@@ -58,7 +38,6 @@ const App: React.FC = () => {
   const [beadSound, setBeadSound] = useState<string>(BEAD_CLICK_SOUND);
   const [showCelebration, setShowCelebration] = useState<boolean>(false);
   const [showHistory, setShowHistory] = useState<boolean>(false);
-  const [showData, setShowData] = useState<boolean>(false);
   const [showConfirm, setShowConfirm] = useState<boolean>(false);
   const [showSettings, setShowSettings] = useState<boolean>(false);
   const [confirmConfig, setConfirmConfig] = useState<{title: string, message: string, onConfirm: () => void}>({
@@ -68,19 +47,16 @@ const App: React.FC = () => {
   
   const beadAudioRef = useRef<HTMLAudioElement | null>(null);
   const roundAudioRef = useRef<HTMLAudioElement | null>(null);
-
-  // Google Auth state
-  const [tokenClient, setTokenClient] = useState<any>(null);
-  const [isSignedIn, setIsSignedIn] = useState(false);
-  const [apiReady, setApiReady] = useState(false);
-  
-  // UI state for data modal
-  const [isBackingUp, setIsBackingUp] = useState(false);
-  const [isRestoring, setIsRestoring] = useState(false);
-  const [statusMessage, setStatusMessage] = useState('');
   
   const activeTheme = themes[themeName];
   const activeProfile = PROFILES[profile];
+
+  // Calculate total lifetime beads (history + today)
+  const totalLifetimeBeads = useMemo(() => {
+    const historyBeads = history.reduce((acc, entry) => acc + (entry.rounds * activeProfile.beadsPerRound), 0);
+    const todayBeads = (counts.roundCount * activeProfile.beadsPerRound) + counts.beadCount;
+    return historyBeads + todayBeads;
+  }, [history, counts, activeProfile.beadsPerRound]);
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -181,29 +157,6 @@ const App: React.FC = () => {
     document.body.className = activeTheme.colors.background;
   }, [themeName, activeTheme]);
   
-  // Initialize Google API Client
-  useEffect(() => {
-      const gapiLoad = () => window.gapi.load('client', () => {
-          window.gapi.client.init({
-              apiKey: API_KEY,
-              discoveryDocs: [DISCOVERY_DOC],
-          }).then(() => {
-              const client = window.google.accounts.oauth2.initTokenClient({
-                  client_id: CLIENT_ID,
-                  scope: SCOPES,
-                  callback: (tokenResponse: any) => {
-                      if (tokenResponse && tokenResponse.access_token) {
-                          window.gapi.client.setToken(tokenResponse);
-                          setIsSignedIn(true);
-                      }
-                  },
-              });
-              setTokenClient(client);
-              setApiReady(true);
-          });
-      });
-      if (window.gapi) gapiLoad();
-  }, []);
 
   // Save counts to localStorage whenever they change
   useEffect(() => {
@@ -308,152 +261,6 @@ const App: React.FC = () => {
     setBeadSound(BEAD_CLICK_SOUND);
   };
 
-  const applyRestoredData = (backupData: BackupData) => {
-    if (backupData && backupData.counts && backupData.history && backupData.streak) {
-        setCounts(backupData.counts);
-        setHistory(backupData.history);
-        setStreak(backupData.streak);
-        
-        // Also update local storage to persist
-        const countsKey = `${activeProfile.storageKeyPrefix}_${LOCAL_STORAGE_COUNTS_KEY}`;
-        const historyKey = `${activeProfile.storageKeyPrefix}_${LOCAL_STORAGE_HISTORY_KEY}`;
-        const streakKey = `${activeProfile.storageKeyPrefix}_${LOCAL_STORAGE_STREAK_KEY}`;
-        localStorage.setItem(countsKey, JSON.stringify(backupData.counts));
-        localStorage.setItem(historyKey, JSON.stringify(backupData.history));
-        localStorage.setItem(streakKey, JSON.stringify(backupData.streak));
-
-        setStatusMessage('Restore successful!');
-        setShowData(false);
-    } else {
-        throw new Error('Invalid backup file format.');
-    }
-  }
-
-  // --- Data Functions ---
-  const handleSignIn = () => { if (tokenClient) tokenClient.requestAccessToken(); };
-
-  const getFileId = async (): Promise<string | null> => {
-      const backupFileName = `${activeProfile.name}_${BACKUP_FILE_NAME_BASE}`;
-      const response = await window.gapi.client.drive.files.list({
-          spaces: 'appDataFolder', fields: 'files(id, name)', q: `name='${backupFileName}'`,
-      });
-      return (response.result.files && response.result.files.length > 0) ? response.result.files[0].id : null;
-  };
-
-  const handleBackup = async () => {
-      if (!isSignedIn) { setStatusMessage('Please sign in first.'); return; }
-      setIsBackingUp(true); setStatusMessage('Backing up...');
-      
-      const backupData: BackupData = { counts, history, streak };
-      const file = new Blob([JSON.stringify(backupData)], { type: 'application/json' });
-      const fileId = await getFileId();
-      const backupFileName = `${activeProfile.name}_${BACKUP_FILE_NAME_BASE}`;
-      
-      const formData = new FormData();
-      formData.append('metadata', new Blob([JSON.stringify({ name: backupFileName })], { type: 'application/json' }));
-      formData.append('file', file);
-
-      try {
-          await window.gapi.client.request({
-              path: `/upload/drive/v3/files${fileId ? `/${fileId}` : ''}`,
-              method: fileId ? 'PATCH' : 'POST',
-              params: { uploadType: 'multipart' },
-              body: formData,
-          });
-          setStatusMessage('Backup successful!');
-      } catch (error) {
-          setStatusMessage('Backup failed. Please try again.');
-          console.error("Backup error:", error);
-      } finally {
-          setIsBackingUp(false);
-          setTimeout(() => setStatusMessage(''), 3000);
-      }
-  };
-
-  const handleRestore = async () => {
-      if (!isSignedIn) { setStatusMessage('Please sign in first.'); return; }
-      setIsRestoring(true); setStatusMessage('Restoring...');
-      
-      const fileId = await getFileId();
-      if (!fileId) {
-          setStatusMessage('No backup file found.');
-          setIsRestoring(false);
-          setTimeout(() => setStatusMessage(''), 3000);
-          return;
-      }
-
-      try {
-          const response = await window.gapi.client.drive.files.get({ fileId: fileId, alt: 'media' });
-          const backupData: BackupData = JSON.parse(response.body);
-          applyRestoredData(backupData);
-      } catch (error) {
-          setStatusMessage('Restore failed. File may be corrupted.');
-          console.error("Restore error:", error);
-      } finally {
-          setIsRestoring(false);
-          setTimeout(() => setStatusMessage(''), 3000);
-      }
-  };
-
-  const showRestoreConfirm = (onConfirmAction: () => void, title: string, message: string) => {
-    setConfirmConfig({
-        title,
-        message,
-        onConfirm: onConfirmAction,
-    });
-    setShowConfirm(true);
-  };
-  
-  const handleExportToFile = () => {
-    try {
-      const backupData: BackupData = { counts, history, streak };
-      const jsonString = JSON.stringify(backupData, null, 2);
-      const blob = new Blob([jsonString], { type: 'application/json' });
-      const href = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = href;
-      const date = new Date().toISOString().slice(0, 10);
-      link.download = `mala_backup_${activeProfile.name}_${date}.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(href);
-      setStatusMessage('Exported successfully!');
-    } catch (error) {
-      console.error("Export failed:", error);
-      setStatusMessage('Export failed.');
-    } finally {
-      setTimeout(() => setStatusMessage(''), 3000);
-    }
-  };
-
-  const handleImportFromFile = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const text = e.target?.result as string;
-        const data = JSON.parse(text);
-        if (!data.counts || !data.history || !data.streak) {
-          throw new Error("Invalid file content");
-        }
-        showRestoreConfirm(
-          () => applyRestoredData(data), 
-          'Restore from File?', 
-          'This will overwrite your current progress. Are you sure?'
-        );
-      } catch (error) {
-        console.error('Error reading file for restore:', error);
-        setStatusMessage('Invalid or corrupted backup file.');
-        setTimeout(() => setStatusMessage(''), 3000);
-      }
-    };
-    reader.onerror = () => {
-        setStatusMessage('Failed to read file.');
-        setTimeout(() => setStatusMessage(''), 3000);
-    }
-    reader.readAsText(file);
-  };
-
   const ProfileSwitcher = () => (
     <div className={`flex items-center p-1 rounded-full ${activeTheme.colors.accentLight} shadow-inner`}>
       {(Object.keys(PROFILES) as ProfileName[]).map(profileName => (
@@ -468,7 +275,7 @@ const App: React.FC = () => {
     </div>
   );
   
-  const goalText = profile === 'OM' 
+  const goalText = activeProfile.dailyGoal.type === 'rounds'
     ? `Daily goal: ${activeProfile.dailyGoal.value} round(s).`
     : `Daily goal: ${activeProfile.dailyGoal.value} beads.`;
 
@@ -499,17 +306,23 @@ const App: React.FC = () => {
         </header>
         
         <main className="flex flex-col items-center justify-center text-center">
-          <div className="flex items-end justify-center space-x-12 mb-8">
-            <div>
-              <span className={`text-xl ${activeTheme.colors.textSecondary}`}>Round</span>
-              <p className={`text-6xl font-bold ${activeTheme.colors.accentDark}`}>{counts.roundCount}</p>
+          <div className="flex items-end justify-center space-x-8 md:space-x-12 mb-8">
+            <div className="text-center">
+              <span className={`text-sm md:text-xl ${activeTheme.colors.textSecondary} uppercase tracking-wider font-semibold`}>Round</span>
+              <p className={`text-4xl md:text-6xl font-bold ${activeTheme.colors.accentDark}`}>{counts.roundCount}</p>
             </div>
+            
+            <div className="text-center">
+              <span className={`text-sm md:text-xl ${activeTheme.colors.textSecondary} uppercase tracking-wider font-semibold`}>Total</span>
+              <p className={`text-4xl md:text-6xl font-bold ${activeTheme.colors.accentDark}`}>{totalLifetimeBeads}</p>
+            </div>
+
             {streak.count > 0 && (
               <div className="text-center">
-                <span className={`text-xl ${activeTheme.colors.textSecondary}`}>Streak</span>
-                <p className={`text-6xl font-bold ${activeTheme.colors.accentDark} flex items-center`}>
+                <span className={`text-sm md:text-xl ${activeTheme.colors.textSecondary} uppercase tracking-wider font-semibold`}>Streak</span>
+                <p className={`text-4xl md:text-6xl font-bold ${activeTheme.colors.accentDark} flex items-center justify-center`}>
                   {streak.count}
-                  <span role="img" aria-label="Streak" className="text-5xl ml-1">🔥</span>
+                  <span role="img" aria-label="Streak" className="text-3xl md:text-5xl ml-1">🔥</span>
                 </p>
               </div>
             )}
@@ -526,8 +339,8 @@ const App: React.FC = () => {
             <div
               className={`w-56 h-56 md:w-72 md:h-72 ${activeTheme.colors.accent} rounded-full shadow-lg group-hover:shadow-xl ${activeTheme.colors.accentActive} transition-all duration-200 flex items-center justify-center`}
             >
-              <span className={`text-7xl font-light ${activeTheme.colors.accentDark} tracking-tighter`}>{counts.beadCount}</span>
-              <span className={`absolute bottom-16 md:bottom-20 text-lg ${activeTheme.colors.textSecondary}`}>/ {activeProfile.beadsPerRound}</span>
+              <span className={`text-9xl md:text-[10rem] font-normal ${activeTheme.colors.accentDark} tracking-tighter`}>{counts.beadCount}</span>
+              <span className={`absolute bottom-14 md:bottom-16 text-lg ${activeTheme.colors.textSecondary}`}>/ {activeProfile.beadsPerRound}</span>
             </div>
           </button>
         </main>
@@ -550,15 +363,6 @@ const App: React.FC = () => {
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.414-1.415L11 9.586V6z" clipRule="evenodd" /></svg>
                     <span className="hidden sm:inline">History</span>
                 </button>
-                <button
-                        onClick={() => setShowData(true)}
-                        disabled={!apiReady}
-                        className={`flex items-center space-x-2 px-3 py-2 ${activeTheme.colors.textSecondary} hover:${activeTheme.colors.textPrimary} ${activeTheme.colors.buttonHover} rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
-                        aria-label="Manage data backup"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M5 8a4 4 0 118 0v1a1 1 0 01-1 1H6a1 1 0 01-1-1V8zm2 0v1h4V8a2 2 0 10-4 0z"/><path d="M3 12a2 2 0 012-2h10a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5z"/></svg>
-                        <span className="hidden sm:inline">Data</span>
-                    </button>
                     <button
                         onClick={() => setShowSettings(true)}
                         className={`flex items-center space-x-2 px-3 py-2 ${activeTheme.colors.textSecondary} hover:${activeTheme.colors.textPrimary} ${activeTheme.colors.buttonHover} rounded-lg transition-colors`}
@@ -579,21 +383,7 @@ const App: React.FC = () => {
         </footer>
       </div>
       <CelebrationModal theme={activeTheme.colors} isOpen={showCelebration} onClose={() => setShowCelebration(false)} />
-      <HistoryModal theme={activeTheme.colors} history={history} isOpen={showHistory} onClose={() => setShowHistory(false)} />
-      <DataModal
-          theme={activeTheme.colors}
-          isOpen={showData}
-          onClose={() => setShowData(false)}
-          onSignIn={handleSignIn}
-          onBackup={handleBackup}
-          onRestore={() => showRestoreConfirm(handleRestore, 'Restore from Drive?', 'This will overwrite your current progress with data from Google Drive. Are you sure?')}
-          isSignedIn={isSignedIn}
-          isBackingUp={isBackingUp}
-          isRestoring={isRestoring}
-          statusMessage={statusMessage}
-          onExportToFile={handleExportToFile}
-          onImportFromFile={handleImportFromFile}
-      />
+      <HistoryModal theme={activeTheme.colors} history={history} isOpen={showHistory} onClose={() => setShowHistory(false)} beadsPerRound={activeProfile.beadsPerRound} />
       <ConfirmModal 
           theme={activeTheme.colors}
           isOpen={showConfirm}
