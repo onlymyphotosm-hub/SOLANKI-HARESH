@@ -1,5 +1,14 @@
+
 import React from 'react';
 import { themes, Theme } from '../themes';
+
+interface ProfileSettings {
+    beadsPerRound: number;
+    dailyGoal: {
+        type: 'rounds' | 'beads';
+        value: number;
+    };
+}
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -12,6 +21,10 @@ interface SettingsModalProps {
   isCustomSoundSet: boolean;
   canInstall: boolean;
   onInstall: () => void;
+  currentProfileSettings?: ProfileSettings;
+  onUpdateSettings?: (settings: ProfileSettings) => void;
+  onResetSettings?: () => void;
+  profileName?: string;
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ 
@@ -25,6 +38,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     isCustomSoundSet,
     canInstall,
     onInstall,
+    currentProfileSettings,
+    onUpdateSettings,
+    onResetSettings,
+    profileName,
 }) => {
   if (!isOpen) return null;
 
@@ -39,6 +56,24 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const handleUploadClick = () => {
     fileInputRef.current?.click();
+  };
+
+  const handleGoalChange = (key: string, value: any) => {
+      if (!currentProfileSettings || !onUpdateSettings) return;
+      
+      if (key === 'beadsPerRound') {
+          onUpdateSettings({ ...currentProfileSettings, beadsPerRound: parseInt(value) || 0 });
+      } else if (key === 'goalType') {
+          onUpdateSettings({ 
+              ...currentProfileSettings, 
+              dailyGoal: { ...currentProfileSettings.dailyGoal, type: value } 
+          });
+      } else if (key === 'goalValue') {
+           onUpdateSettings({ 
+              ...currentProfileSettings, 
+              dailyGoal: { ...currentProfileSettings.dailyGoal, value: parseInt(value) || 0 } 
+          });
+      }
   };
 
   return (
@@ -62,6 +97,61 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           </button>
         </header>
         <main className="p-6 overflow-y-auto">
+            
+            {/* Profile Goals & Limits Section */}
+            {currentProfileSettings && onUpdateSettings && (
+                <>
+                    <div className="space-y-4">
+                        <div className="flex justify-between items-center">
+                             <h3 className={`text-lg font-semibold ${theme.textPrimary}`}>Goals & Limits ({profileName})</h3>
+                             <button 
+                                onClick={onResetSettings}
+                                className={`text-xs px-2 py-1 rounded ${theme.buttonHover} ${theme.textSecondary} hover:${theme.textPrimary}`}
+                             >
+                                Reset Defaults
+                             </button>
+                        </div>
+                       
+                        <div className="grid grid-cols-1 gap-4">
+                            <div>
+                                <label className={`block text-sm font-medium ${theme.textSecondary} mb-1`}>Beads per Round</label>
+                                <input 
+                                    type="number" 
+                                    min="1"
+                                    value={currentProfileSettings.beadsPerRound}
+                                    onChange={(e) => handleGoalChange('beadsPerRound', e.target.value)}
+                                    className={`w-full p-2 rounded-lg border ${theme.listItemBorder} bg-white ${theme.textPrimary} focus:outline-none focus:ring-2 focus:ring-opacity-50 focus:ring-blue-400`}
+                                />
+                            </div>
+                             <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className={`block text-sm font-medium ${theme.textSecondary} mb-1`}>Goal Type</label>
+                                    <select 
+                                        value={currentProfileSettings.dailyGoal.type}
+                                        onChange={(e) => handleGoalChange('goalType', e.target.value)}
+                                        className={`w-full p-2 rounded-lg border ${theme.listItemBorder} bg-white ${theme.textPrimary} focus:outline-none focus:ring-2 focus:ring-opacity-50 focus:ring-blue-400`}
+                                    >
+                                        <option value="rounds">Rounds</option>
+                                        <option value="beads">Beads</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className={`block text-sm font-medium ${theme.textSecondary} mb-1`}>Target</label>
+                                    <input 
+                                        type="number" 
+                                        min="1"
+                                        value={currentProfileSettings.dailyGoal.value}
+                                        onChange={(e) => handleGoalChange('goalValue', e.target.value)}
+                                        className={`w-full p-2 rounded-lg border ${theme.listItemBorder} bg-white ${theme.textPrimary} focus:outline-none focus:ring-2 focus:ring-opacity-50 focus:ring-blue-400`}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className={`border-t ${theme.modalHeaderBorder} my-6`}></div>
+                </>
+            )}
+
             <div className="space-y-4">
                 <h3 className={`text-lg font-semibold ${theme.textPrimary}`}>Color Theme</h3>
                 <div className="grid grid-cols-2 gap-4">

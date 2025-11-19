@@ -1,11 +1,12 @@
 
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { PROFILES, ProfileName, LOCAL_STORAGE_PROFILE_KEY, LOCAL_STORAGE_COUNTS_KEY, LOCAL_STORAGE_HISTORY_KEY, BEAD_CLICK_SOUND, ROUND_COMPLETE_SOUND, LOCAL_STORAGE_THEME_KEY, LOCAL_STORAGE_CUSTOM_SOUND_KEY, LOCAL_STORAGE_STREAK_KEY } from './constants';
+import { PROFILES, ProfileName, LOCAL_STORAGE_PROFILE_KEY, LOCAL_STORAGE_COUNTS_KEY, LOCAL_STORAGE_HISTORY_KEY, BEAD_CLICK_SOUND, ROUND_COMPLETE_SOUND, LOCAL_STORAGE_THEME_KEY, LOCAL_STORAGE_CUSTOM_SOUND_KEY, LOCAL_STORAGE_STREAK_KEY, LOCAL_STORAGE_PROFILE_SETTINGS_KEY } from './constants';
 import CircularProgress from './components/CircularProgress';
 import CelebrationModal from './components/CelebrationModal';
 import HistoryModal, { HistoryEntry } from './components/HistoryModal';
 import ConfirmModal from './components/ConfirmModal';
 import SettingsModal from './components/SettingsModal';
+import DataModal from './components/DataModal';
 import { themes } from './themes';
 
 interface DayData {
@@ -20,10 +21,41 @@ interface StreakData {
   lastDate: string | null;
 }
 
+interface ProfileSettings {
+    beadsPerRound: number;
+    dailyGoal: {
+        type: 'rounds' | 'beads';
+        value: number;
+    };
+}
+
 const App: React.FC = () => {
   const [profile, setProfile] = useState<ProfileName>(() => {
     const savedProfile = localStorage.getItem(LOCAL_STORAGE_PROFILE_KEY);
     return (savedProfile && Object.keys(PROFILES).includes(savedProfile)) ? (savedProfile as ProfileName) : 'OM';
+  });
+
+  // Custom Profile Settings State
+  const [customProfileSettings, setCustomProfileSettings] = useState<Record<ProfileName, ProfileSettings>>(() => {
+    const defaults: Record<ProfileName, ProfileSettings> = {} as any;
+    (Object.keys(PROFILES) as ProfileName[]).forEach(key => {
+        defaults[key] = {
+            beadsPerRound: PROFILES[key].beadsPerRound,
+            dailyGoal: PROFILES[key].dailyGoal
+        };
+    });
+
+    try {
+        const stored = localStorage.getItem(LOCAL_STORAGE_PROFILE_SETTINGS_KEY);
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            // Merge defaults with stored to ensure new profiles exist
+            return { ...defaults, ...parsed };
+        }
+    } catch (e) {
+        console.error("Error loading profile settings", e);
+    }
+    return defaults;
   });
   
   const [counts, setCounts] = useState<DayData>({
@@ -40,6 +72,7 @@ const App: React.FC = () => {
   const [showHistory, setShowHistory] = useState<boolean>(false);
   const [showConfirm, setShowConfirm] = useState<boolean>(false);
   const [showSettings, setShowSettings] = useState<boolean>(false);
+  const [showDataModal, setShowDataModal] = useState<boolean>(false);
   const [confirmConfig, setConfirmConfig] = useState<{title: string, message: string, onConfirm: () => void}>({
       title: '', message: '', onConfirm: () => {},
   });
@@ -49,7 +82,34 @@ const App: React.FC = () => {
   const roundAudioRef = useRef<HTMLAudioElement | null>(null);
   
   const activeTheme = themes[themeName];
-  const activeProfile = PROFILES[profile];
+  
+  // Merge static profile info with dynamic settings
+  const activeProfile = useMemo(() => ({
+      ...PROFILES[profile],
+      ...customProfileSettings[profile]
+  }), [profile, customProfileSettings]);
+
+  // Save custom settings when changed
+  useEffect(() => {
+      localStorage.setItem(LOCAL_STORAGE_PROFILE_SETTINGS_KEY, JSON.stringify(customProfileSettings));
+  }, [customProfileSettings]);
+
+  const updateProfileSettings = (newSettings: ProfileSettings) => {
+      setCustomProfileSettings(prev => ({
+          ...prev,
+          [profile]: newSettings
+      }));
+  };
+
+  const resetProfileSettings = () => {
+      setCustomProfileSettings(prev => ({
+          ...prev,
+          [profile]: {
+              beadsPerRound: PROFILES[profile].beadsPerRound,
+              dailyGoal: PROFILES[profile].dailyGoal
+          }
+      }));
+  };
 
   // Calculate total lifetime beads (history + today)
   const totalLifetimeBeads = useMemo(() => {
@@ -140,7 +200,7 @@ const App: React.FC = () => {
         setCounts({ beadCount: 0, roundCount: 0, lastVisitDate: todayStr, targetReachedToday: false });
     }
     setHistory(loadedHistory);
-  }, [profile]);
+  }, [profile]); // Note: activeProfile.storageKeyPrefix depends on profile, so this is safe.
   
   // Update bead audio object when sound source changes
   useEffect(() => {
@@ -261,6 +321,57 @@ const App: React.FC = () => {
     setBeadSound(BEAD_CLICK_SOUND);
   };
 
+  const handleExportData = () => {
+    const data: Record<string, string | null> = {};
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.includes('malaCounter')) {
+            data[key] = localStorage.getItem(key);
+        }
+    }
+    const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const date = new Date().toISOString().slice(0, 10);
+    a.download = `mala-counter-backup-${date}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportData = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const content = e.target?.result as string;
+            const data = JSON.parse(content);
+            if (typeof data === 'object' && data !== null) {
+                const hasValidKeys = Object.keys(data).some(k => k.includes('malaCounter'));
+                if (!hasValidKeys) {
+                     alert('Invalid backup file.');
+                     return;
+                }
+                
+                Object.keys(data).forEach(key => {
+                    if (data[key] !== null) {
+                        localStorage.setItem(key, data[key]);
+                    }
+                });
+                
+                alert('Backup restored successfully. The app will reload.');
+                window.location.reload();
+            }
+        } catch (error) {
+            console.error("Import failed", error);
+            alert('Failed to parse backup file.');
+        }
+    };
+    reader.readAsText(file);
+    setShowDataModal(false);
+  };
+
   const ProfileSwitcher = () => (
     <div className={`flex items-center p-1 rounded-full ${activeTheme.colors.accentLight} shadow-inner`}>
       {(Object.keys(PROFILES) as ProfileName[]).map(profileName => (
@@ -363,14 +474,22 @@ const App: React.FC = () => {
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.414-1.415L11 9.586V6z" clipRule="evenodd" /></svg>
                     <span className="hidden sm:inline">History</span>
                 </button>
-                    <button
-                        onClick={() => setShowSettings(true)}
-                        className={`flex items-center space-x-2 px-3 py-2 ${activeTheme.colors.textSecondary} hover:${activeTheme.colors.textPrimary} ${activeTheme.colors.buttonHover} rounded-lg transition-colors`}
-                        aria-label="Open settings"
-                    >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" /></svg>
-                        <span className="hidden sm:inline">Settings</span>
-                    </button>
+                <button
+                    onClick={() => setShowDataModal(true)}
+                    className={`flex items-center space-x-2 px-3 py-2 ${activeTheme.colors.textSecondary} hover:${activeTheme.colors.textPrimary} ${activeTheme.colors.buttonHover} rounded-lg transition-colors`}
+                    aria-label="Backup and restore"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                    <span className="hidden sm:inline">Data</span>
+                </button>
+                <button
+                    onClick={() => setShowSettings(true)}
+                    className={`flex items-center space-x-2 px-3 py-2 ${activeTheme.colors.textSecondary} hover:${activeTheme.colors.textPrimary} ${activeTheme.colors.buttonHover} rounded-lg transition-colors`}
+                    aria-label="Open settings"
+                >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" /></svg>
+                    <span className="hidden sm:inline">Settings</span>
+                </button>
             </div>
             <div className="flex items-center space-x-2" aria-label={`Daily goal progress`}>
                 <div className={`w-16 h-2 ${progressBaseBg} rounded-full overflow-hidden`}>
@@ -384,6 +503,13 @@ const App: React.FC = () => {
       </div>
       <CelebrationModal theme={activeTheme.colors} isOpen={showCelebration} onClose={() => setShowCelebration(false)} />
       <HistoryModal theme={activeTheme.colors} history={history} isOpen={showHistory} onClose={() => setShowHistory(false)} beadsPerRound={activeProfile.beadsPerRound} />
+      <DataModal 
+        isOpen={showDataModal} 
+        onClose={() => setShowDataModal(false)} 
+        theme={activeTheme.colors}
+        onExportToFile={handleExportData}
+        onImportFromFile={handleImportData}
+      />
       <ConfirmModal 
           theme={activeTheme.colors}
           isOpen={showConfirm}
@@ -403,6 +529,10 @@ const App: React.FC = () => {
         isCustomSoundSet={beadSound !== BEAD_CLICK_SOUND}
         canInstall={!!installPrompt}
         onInstall={handleInstallClick}
+        currentProfileSettings={customProfileSettings[profile]}
+        onUpdateSettings={updateProfileSettings}
+        onResetSettings={resetProfileSettings}
+        profileName={activeProfile.name}
       />
     </>
   );
