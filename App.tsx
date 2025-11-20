@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { PROFILES, ProfileName, LOCAL_STORAGE_PROFILE_KEY, LOCAL_STORAGE_COUNTS_KEY, LOCAL_STORAGE_HISTORY_KEY, BEAD_CLICK_SOUND, ROUND_COMPLETE_SOUND, LOCAL_STORAGE_THEME_KEY, LOCAL_STORAGE_CUSTOM_SOUND_KEY, LOCAL_STORAGE_STREAK_KEY, LOCAL_STORAGE_PROFILE_SETTINGS_KEY } from './constants';
+import { PROFILES, ProfileName, LOCAL_STORAGE_PROFILE_KEY, LOCAL_STORAGE_COUNTS_KEY, LOCAL_STORAGE_HISTORY_KEY, BEAD_CLICK_SOUND, ROUND_COMPLETE_SOUND, LOCAL_STORAGE_THEME_KEY, LOCAL_STORAGE_CUSTOM_SOUND_KEY, LOCAL_STORAGE_STREAK_KEY, LOCAL_STORAGE_PROFILE_SETTINGS_KEY, GOOGLE_CLIENT_ID, GOOGLE_API_KEY, BACKUP_FILE_NAME } from './constants';
 import CircularProgress from './components/CircularProgress';
 import CelebrationModal from './components/CelebrationModal';
 import HistoryModal, { HistoryEntry } from './components/HistoryModal';
@@ -8,6 +8,15 @@ import ConfirmModal from './components/ConfirmModal';
 import SettingsModal from './components/SettingsModal';
 import DataModal from './components/DataModal';
 import { themes } from './themes';
+import { generateMalaReport } from './utils/pdfGenerator';
+
+// Add global types for Google API
+declare global {
+  interface Window {
+    gapi: any;
+    google: any;
+  }
+}
 
 interface DayData {
   beadCount: number;
@@ -30,12 +39,24 @@ interface ProfileSettings {
 }
 
 const App: React.FC = () => {
-  const [profile, setProfile] = useState<ProfileName>(() => {
-    const savedProfile = localStorage.getItem(LOCAL_STORAGE_PROFILE_KEY);
-    return (savedProfile && Object.keys(PROFILES).includes(savedProfile)) ? (savedProfile as ProfileName) : 'OM';
-  });
+  // Helper to safely get the initial profile synchronously
+  const getInitialProfile = (): ProfileName => {
+      const savedProfile = localStorage.getItem(LOCAL_STORAGE_PROFILE_KEY);
+      return (savedProfile && Object.keys(PROFILES).includes(savedProfile)) ? (savedProfile as ProfileName) : 'OM';
+  };
 
-  // Custom Profile Settings State
+  const [profile, setProfile] = useState<ProfileName>(getInitialProfile);
+  
+  // Guard to prevent saving stale state during profile switches
+  const [isLoaded, setIsLoaded] = useState<boolean>(true);
+
+  // Google Drive State
+  const [isGoogleClientReady, setIsGoogleClientReady] = useState(false);
+  const [isGoogleSignedIn, setIsGoogleSignedIn] = useState(false);
+  const [backupStatus, setBackupStatus] = useState<string>('');
+  const tokenClient = useRef<any>(null);
+
+  // Custom Profile Settings State with robust parsing
   const [customProfileSettings, setCustomProfileSettings] = useState<Record<ProfileName, ProfileSettings>>(() => {
     const defaults: Record<ProfileName, ProfileSettings> = {} as any;
     (Object.keys(PROFILES) as ProfileName[]).forEach(key => {
@@ -49,8 +70,25 @@ const App: React.FC = () => {
         const stored = localStorage.getItem(LOCAL_STORAGE_PROFILE_SETTINGS_KEY);
         if (stored) {
             const parsed = JSON.parse(stored);
-            // Merge defaults with stored to ensure new profiles exist
-            return { ...defaults, ...parsed };
+            if (parsed && typeof parsed === 'object') {
+                const merged = { ...defaults };
+                // Safe merge: iterate keys in parsed, if they exist in defaults, merge properties
+                Object.keys(parsed).forEach(k => {
+                    const pKey = k as ProfileName;
+                    if (merged[pKey] && parsed[k]) {
+                         merged[pKey] = {
+                             ...merged[pKey],
+                             ...parsed[k],
+                             // Ensure dailyGoal is also merged if partially present
+                             dailyGoal: {
+                                 ...merged[pKey].dailyGoal,
+                                 ...(parsed[k].dailyGoal || {})
+                             }
+                         };
+                    }
+                });
+                return merged;
+            }
         }
     } catch (e) {
         console.error("Error loading profile settings", e);
@@ -58,14 +96,50 @@ const App: React.FC = () => {
     return defaults;
   });
   
-  const [counts, setCounts] = useState<DayData>({
-    beadCount: 0,
-    roundCount: 0,
-    lastVisitDate: new Date().toISOString().slice(0, 10),
-    targetReachedToday: false,
+  // Lazy Initialize Counts with validation
+  const [counts, setCounts] = useState<DayData>(() => {
+    const p = getInitialProfile();
+    const key = `${PROFILES[p].storageKeyPrefix}_${LOCAL_STORAGE_COUNTS_KEY}`;
+    try {
+        const saved = localStorage.getItem(key);
+        if (saved) {
+            const parsed = JSON.parse(saved);
+            // Basic shape check to prevent crash on null or invalid objects
+            if (parsed && typeof parsed === 'object' && typeof parsed.roundCount === 'number') {
+                return parsed;
+            }
+        }
+    } catch (e) {
+        console.error("Error lazy loading counts", e);
+    }
+    return {
+        beadCount: 0,
+        roundCount: 0,
+        lastVisitDate: new Date().toISOString().slice(0, 10),
+        targetReachedToday: false,
+    };
   });
+
   const [history, setHistory] = useState<HistoryEntry[]>([]);
-  const [streak, setStreak] = useState<StreakData>({ count: 0, lastDate: null });
+  
+  // Lazy Initialize Streak with validation
+  const [streak, setStreak] = useState<StreakData>(() => {
+      const p = getInitialProfile();
+      const key = `${PROFILES[p].storageKeyPrefix}_${LOCAL_STORAGE_STREAK_KEY}`;
+      try {
+          const saved = localStorage.getItem(key);
+          if (saved) {
+              const parsed = JSON.parse(saved);
+              if (parsed && typeof parsed === 'object' && typeof parsed.count === 'number') {
+                  return parsed;
+              }
+          }
+      } catch (e) {
+          console.error("Error lazy loading streak", e);
+      }
+      return { count: 0, lastDate: null };
+  });
+
   const [themeName, setThemeName] = useState<string>(localStorage.getItem(LOCAL_STORAGE_THEME_KEY) || 'amber');
   const [beadSound, setBeadSound] = useState<string>(BEAD_CLICK_SOUND);
   const [showCelebration, setShowCelebration] = useState<boolean>(false);
@@ -88,6 +162,186 @@ const App: React.FC = () => {
       ...PROFILES[profile],
       ...customProfileSettings[profile]
   }), [profile, customProfileSettings]);
+
+  // --- Google Drive Integration ---
+  useEffect(() => {
+    const initGoogleClient = () => {
+      if (!window.gapi || !window.google) return;
+
+      window.gapi.load('client', async () => {
+        try {
+           await window.gapi.client.init({
+            apiKey: GOOGLE_API_KEY,
+            discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
+          });
+          
+          tokenClient.current = window.google.accounts.oauth2.initTokenClient({
+            client_id: GOOGLE_CLIENT_ID,
+            scope: 'https://www.googleapis.com/auth/drive.appdata',
+            callback: (tokenResponse: any) => {
+                if (tokenResponse && tokenResponse.access_token) {
+                   setIsGoogleSignedIn(true);
+                   setBackupStatus('Signed in');
+                }
+            },
+          });
+          
+          setIsGoogleClientReady(true);
+        } catch (error) {
+           console.error("Error initializing Google Client", error);
+           setBackupStatus('Failed to init Google Client');
+        }
+      });
+    };
+    
+    // Check periodically if scripts are loaded
+    const interval = setInterval(() => {
+        if (window.gapi && window.google) {
+            clearInterval(interval);
+            initGoogleClient();
+        }
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleGoogleLogin = () => {
+    if (!GOOGLE_CLIENT_ID || !GOOGLE_API_KEY) {
+        alert("Please configure GOOGLE_CLIENT_ID and GOOGLE_API_KEY in constants.ts to use this feature.");
+        return;
+    }
+    if (tokenClient.current) {
+      tokenClient.current.requestAccessToken();
+    }
+  };
+
+  const handleGoogleLogout = () => {
+    const token = window.gapi.client.getToken();
+    if (token !== null) {
+        window.google.accounts.oauth2.revoke(token.access_token, () => {
+            window.gapi.client.setToken('');
+            setIsGoogleSignedIn(false);
+            setBackupStatus('');
+        });
+    }
+  };
+
+  const gatherAllData = () => {
+    const data: Record<string, string | null> = {};
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.includes('malaCounter')) {
+            data[key] = localStorage.getItem(key);
+        }
+    }
+    return data;
+  };
+
+  const processRestoreData = (data: any) => {
+        if (typeof data === 'object' && data !== null) {
+            const hasValidKeys = Object.keys(data).some(k => k.includes('malaCounter'));
+            if (!hasValidKeys && Object.keys(data).length > 0) {
+                if (!window.confirm("The data found doesn't look like a standard backup. Try to restore anyway?")) return;
+            }
+
+            Object.keys(data).forEach(key => {
+                if (key.includes('malaCounter')) {
+                    let value = data[key];
+                    if (typeof value === 'object' && value !== null) {
+                        value = JSON.stringify(value);
+                    }
+                    if (value !== null && value !== undefined) {
+                        localStorage.setItem(key, String(value));
+                    }
+                }
+            });
+            alert('Restored successfully from Drive! Reloading...');
+            window.location.reload();
+        } else {
+            alert('Invalid backup format.');
+        }
+  };
+
+  const handleDriveBackup = async () => {
+      setBackupStatus('Backing up...');
+      try {
+        const data = gatherAllData();
+        const fileContent = JSON.stringify(data);
+        const file = new Blob([fileContent], {type: 'application/json'});
+        const metadata = {
+            name: BACKUP_FILE_NAME,
+            mimeType: 'application/json',
+            parents: ['appDataFolder']
+        };
+
+        // Check if file exists
+        const listResponse = await window.gapi.client.drive.files.list({
+            q: `name = '${BACKUP_FILE_NAME}' and 'appDataFolder' in parents`,
+            fields: 'files(id, name)',
+            spaces: 'appDataFolder'
+        });
+
+        if (listResponse.result.files && listResponse.result.files.length > 0) {
+            // Update existing file
+            const fileId = listResponse.result.files[0].id;
+            const updateUrl = `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`;
+            const form = new FormData();
+            form.append('metadata', new Blob([JSON.stringify({ mimeType: 'application/json' })], { type: 'application/json' }));
+            form.append('file', file);
+
+            await fetch(updateUrl, {
+                method: 'PATCH',
+                headers: new Headers({ 'Authorization': 'Bearer ' + window.gapi.client.getToken().access_token }),
+                body: form
+            });
+            setBackupStatus(`Backup updated: ${new Date().toLocaleTimeString()}`);
+        } else {
+            // Create new file
+            const createUrl = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
+            const form = new FormData();
+            form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+            form.append('file', file);
+
+            await fetch(createUrl, {
+                method: 'POST',
+                headers: new Headers({ 'Authorization': 'Bearer ' + window.gapi.client.getToken().access_token }),
+                body: form
+            });
+            setBackupStatus(`Backup created: ${new Date().toLocaleTimeString()}`);
+        }
+      } catch (error) {
+          console.error('Backup failed', error);
+          setBackupStatus('Backup failed. See console.');
+      }
+  };
+
+  const handleDriveRestore = async () => {
+      setBackupStatus('Searching for backup...');
+      try {
+          const listResponse = await window.gapi.client.drive.files.list({
+            q: `name = '${BACKUP_FILE_NAME}' and 'appDataFolder' in parents`,
+            fields: 'files(id, name)',
+            spaces: 'appDataFolder'
+        });
+
+        if (listResponse.result.files && listResponse.result.files.length > 0) {
+            const fileId = listResponse.result.files[0].id;
+            setBackupStatus('Downloading...');
+            const response = await window.gapi.client.drive.files.get({
+                fileId: fileId,
+                alt: 'media'
+            });
+            processRestoreData(response.result);
+        } else {
+            setBackupStatus('No backup found in Drive.');
+            alert('No backup file found in your Google Drive App Data.');
+        }
+      } catch (error) {
+          console.error('Restore failed', error);
+          setBackupStatus('Restore failed. See console.');
+      }
+  };
+  // --- End Google Drive Integration ---
 
   // Save custom settings when changed
   useEffect(() => {
@@ -142,12 +396,15 @@ const App: React.FC = () => {
     });
   };
 
-  // Save profile to localStorage
-  useEffect(() => {
-    localStorage.setItem(LOCAL_STORAGE_PROFILE_KEY, profile);
-  }, [profile]);
+  const handleProfileSwitch = (newProfile: ProfileName) => {
+      if (newProfile === profile) return;
+      // Block saving until the new profile data is loaded
+      setIsLoaded(false);
+      setProfile(newProfile);
+      localStorage.setItem(LOCAL_STORAGE_PROFILE_KEY, newProfile);
+  };
   
-  // Load data from localStorage on initial render or profile change
+  // Load data from localStorage on profile change (or initial mount if not lazy loaded)
   useEffect(() => {
     const customSound = localStorage.getItem(LOCAL_STORAGE_CUSTOM_SOUND_KEY);
     setBeadSound(customSound || BEAD_CLICK_SOUND);
@@ -163,44 +420,71 @@ const App: React.FC = () => {
     const todayStr = today.toISOString().slice(0, 10);
     const yesterdayStr = yesterday.toISOString().slice(0, 10);
 
-    // Load and validate streak
+    // Load Streak
     const savedStreakRaw = localStorage.getItem(streakKey);
-    const savedStreak: StreakData = savedStreakRaw ? JSON.parse(savedStreakRaw) : { count: 0, lastDate: null };
+    let savedStreak: StreakData = { count: 0, lastDate: null };
+    if (savedStreakRaw) {
+        try {
+            const parsed = JSON.parse(savedStreakRaw);
+            if (parsed && typeof parsed === 'object') savedStreak = parsed;
+        } catch(e) {}
+    }
+
     if (savedStreak.lastDate !== todayStr && savedStreak.lastDate !== yesterdayStr) {
-      setStreak({ count: 0, lastDate: null });
+        // Reset streak if skipped a day
+        setStreak({ count: 0, lastDate: null });
     } else {
-      setStreak(savedStreak);
+        setStreak(savedStreak);
     }
     
     const savedDataRaw = localStorage.getItem(countsKey);
     const savedHistoryRaw = localStorage.getItem(historyKey);
     
-    const loadedHistory: HistoryEntry[] = savedHistoryRaw ? JSON.parse(savedHistoryRaw) : [];
+    let loadedHistory: HistoryEntry[] = [];
+    if (savedHistoryRaw) {
+        try {
+            const parsed = JSON.parse(savedHistoryRaw);
+            if (Array.isArray(parsed)) loadedHistory = parsed;
+        } catch (e) {}
+    }
     
     if (savedDataRaw) {
-      const savedData: DayData = JSON.parse(savedDataRaw);
+      let savedData: DayData = { beadCount: 0, roundCount: 0, lastVisitDate: todayStr, targetReachedToday: false };
+      try {
+          const parsed = JSON.parse(savedDataRaw);
+          if (parsed && typeof parsed === 'object') savedData = parsed;
+      } catch (e) {}
       
+      // Check if date has changed (New Day Logic)
       if (savedData.lastVisitDate !== todayStr) {
         if (savedData.roundCount > 0 || savedData.beadCount > 0) {
             const yesterdayEntry = {
                 date: savedData.lastVisitDate,
                 rounds: savedData.roundCount,
             };
+            // Add to history if not already present
             if (!loadedHistory.some(h => h.date === yesterdayEntry.date)) {
                 const newHistory = [yesterdayEntry, ...loadedHistory];
+                loadedHistory.unshift(yesterdayEntry); // update local var for immediate use if needed
                 setHistory(newHistory);
+                // Save history immediately
                 localStorage.setItem(historyKey, JSON.stringify(newHistory));
             }
         }
+        // Reset counts for today
         setCounts({ beadCount: 0, roundCount: 0, lastVisitDate: todayStr, targetReachedToday: false });
       } else {
+        // Same day, load saved counts
         setCounts(savedData);
       }
     } else {
         setCounts({ beadCount: 0, roundCount: 0, lastVisitDate: todayStr, targetReachedToday: false });
     }
     setHistory(loadedHistory);
-  }, [profile]); // Note: activeProfile.storageKeyPrefix depends on profile, so this is safe.
+    
+    // Data successfully loaded for this profile
+    setIsLoaded(true);
+  }, [profile]); // Depend on profile string (not activeProfile object) to avoid reloading on settings change
   
   // Update bead audio object when sound source changes
   useEffect(() => {
@@ -220,15 +504,17 @@ const App: React.FC = () => {
 
   // Save counts to localStorage whenever they change
   useEffect(() => {
+    if (!isLoaded) return;
     const countsKey = `${activeProfile.storageKeyPrefix}_${LOCAL_STORAGE_COUNTS_KEY}`;
     localStorage.setItem(countsKey, JSON.stringify(counts));
-  }, [counts, profile]);
+  }, [counts, profile, isLoaded]);
 
   // Save streak to localStorage whenever it changes
   useEffect(() => {
+    if (!isLoaded) return;
     const streakKey = `${activeProfile.storageKeyPrefix}_${LOCAL_STORAGE_STREAK_KEY}`;
     localStorage.setItem(streakKey, JSON.stringify(streak));
-  }, [streak, profile]);
+  }, [streak, profile, isLoaded]);
 
 
   const handleBeadIncrement = useCallback(() => {
@@ -299,6 +585,19 @@ const App: React.FC = () => {
     });
     setShowConfirm(true);
   };
+
+  const handleHistoryEdit = (index: number, updatedEntry: HistoryEntry) => {
+      const newHistory = [...history];
+      newHistory[index] = updatedEntry;
+      // Sort desc by date
+      newHistory.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      setHistory(newHistory);
+      
+      if (isLoaded) {
+          const historyKey = `${activeProfile.storageKeyPrefix}_${LOCAL_STORAGE_HISTORY_KEY}`;
+          localStorage.setItem(historyKey, JSON.stringify(newHistory));
+      }
+  };
   
   const handleSoundUpload = (file: File) => {
     if (file && file.type.startsWith('audio/')) {
@@ -322,13 +621,7 @@ const App: React.FC = () => {
   };
 
   const handleExportData = () => {
-    const data: Record<string, string | null> = {};
-    for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.includes('malaCounter')) {
-            data[key] = localStorage.getItem(key);
-        }
-    }
+    const data = gatherAllData();
     const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -347,29 +640,110 @@ const App: React.FC = () => {
         try {
             const content = e.target?.result as string;
             const data = JSON.parse(content);
-            if (typeof data === 'object' && data !== null) {
-                const hasValidKeys = Object.keys(data).some(k => k.includes('malaCounter'));
-                if (!hasValidKeys) {
-                     alert('Invalid backup file.');
-                     return;
-                }
-                
-                Object.keys(data).forEach(key => {
-                    if (data[key] !== null) {
-                        localStorage.setItem(key, data[key]);
-                    }
-                });
-                
-                alert('Backup restored successfully. The app will reload.');
-                window.location.reload();
-            }
+            processRestoreData(data);
         } catch (error) {
             console.error("Import failed", error);
-            alert('Failed to parse backup file.');
+            alert('Failed to parse backup file. Please ensure it is a valid JSON file.');
         }
     };
     reader.readAsText(file);
     setShowDataModal(false);
+  };
+
+  const handleExportPDF = () => {
+      const reportData = (Object.keys(PROFILES) as ProfileName[]).map(pName => {
+          const isCurrent = pName === profile;
+          const prefix = PROFILES[pName].storageKeyPrefix;
+          
+          // Settings
+          const settings = isCurrent 
+            ? activeProfile 
+            : { ...PROFILES[pName], ...(customProfileSettings[pName] || {}) };
+
+          // History
+          let pHistory: HistoryEntry[] = [];
+          if (isCurrent) {
+              pHistory = [...history];
+          } else {
+              const raw = localStorage.getItem(`${prefix}_${LOCAL_STORAGE_HISTORY_KEY}`);
+              try {
+                  pHistory = raw ? JSON.parse(raw) : [];
+              } catch (e) { pHistory = []; }
+          }
+
+          // Streak
+          let pStreak = 0;
+          if (isCurrent) {
+              pStreak = streak.count;
+          } else {
+               const raw = localStorage.getItem(`${prefix}_${LOCAL_STORAGE_STREAK_KEY}`);
+               try {
+                   const sData = raw ? JSON.parse(raw) : { count: 0 };
+                   pStreak = sData.count || 0;
+               } catch (e) { pStreak = 0; }
+          }
+
+          // Today's counts (to add to total)
+          let todayBeads = 0;
+          let todayRounds = 0;
+          
+          if (isCurrent) {
+              todayBeads = counts.beadCount;
+              todayRounds = counts.roundCount;
+          } else {
+               const raw = localStorage.getItem(`${prefix}_${LOCAL_STORAGE_COUNTS_KEY}`);
+               if (raw) {
+                   try {
+                       const d = JSON.parse(raw);
+                       todayBeads = d.beadCount || 0;
+                       todayRounds = d.roundCount || 0;
+                   } catch (e) { }
+               }
+          }
+
+          // Calculate Total
+          const historyBeads = pHistory.reduce((acc, h) => acc + (h.rounds * settings.beadsPerRound), 0);
+          const currentBeads = (todayRounds * settings.beadsPerRound) + todayBeads;
+          const totalBeads = historyBeads + currentBeads;
+          
+          const historyRounds = pHistory.reduce((acc, h) => acc + h.rounds, 0);
+          const totalRounds = historyRounds + todayRounds;
+
+          // Format History for PDF
+          const displayHistory = [...pHistory];
+          if (todayRounds > 0 || todayBeads > 0) {
+               displayHistory.unshift({
+                   date: new Date().toISOString().slice(0,10) + " (Today)",
+                   rounds: todayRounds,
+               } as any); 
+          }
+          
+          const formattedHistory = displayHistory.map(h => {
+             let beads = h.rounds * settings.beadsPerRound;
+             if (h.date.includes("Today")) {
+                 beads = currentBeads;
+             }
+             return {
+                date: h.date,
+                rounds: h.rounds,
+                beads: beads
+             };
+          });
+
+          return {
+              name: PROFILES[pName].name,
+              totalBeads,
+              totalRounds,
+              streak: pStreak,
+              history: formattedHistory,
+              settings: {
+                  beadsPerRound: settings.beadsPerRound,
+                  dailyGoal: settings.dailyGoal.type === 'rounds' ? `${settings.dailyGoal.value} Rounds` : `${settings.dailyGoal.value} Beads`
+              }
+          };
+      });
+      
+      generateMalaReport(reportData, activeTheme.colors);
   };
 
   const ProfileSwitcher = () => (
@@ -377,7 +751,7 @@ const App: React.FC = () => {
       {(Object.keys(PROFILES) as ProfileName[]).map(profileName => (
         <button
           key={profileName}
-          onClick={() => setProfile(profileName)}
+          onClick={() => handleProfileSwitch(profileName)}
           className={`px-4 sm:px-6 py-2 text-sm sm:text-base font-bold rounded-full transition-all duration-300 ${profile === profileName ? `${activeTheme.colors.accent} ${activeTheme.colors.accentDark} shadow-md` : `${activeTheme.colors.textSecondary} hover:${activeTheme.colors.textPrimary}`}`}
         >
           {PROFILES[profileName].name}
@@ -502,13 +876,27 @@ const App: React.FC = () => {
         </footer>
       </div>
       <CelebrationModal theme={activeTheme.colors} isOpen={showCelebration} onClose={() => setShowCelebration(false)} />
-      <HistoryModal theme={activeTheme.colors} history={history} isOpen={showHistory} onClose={() => setShowHistory(false)} beadsPerRound={activeProfile.beadsPerRound} />
+      <HistoryModal 
+        theme={activeTheme.colors} 
+        history={history} 
+        isOpen={showHistory} 
+        onClose={() => setShowHistory(false)} 
+        beadsPerRound={activeProfile.beadsPerRound}
+        onEditEntry={handleHistoryEdit}
+      />
       <DataModal 
         isOpen={showDataModal} 
         onClose={() => setShowDataModal(false)} 
         theme={activeTheme.colors}
         onExportToFile={handleExportData}
         onImportFromFile={handleImportData}
+        onExportToPDF={handleExportPDF}
+        isGoogleSignedIn={isGoogleSignedIn}
+        onGoogleLogin={handleGoogleLogin}
+        onGoogleLogout={handleGoogleLogout}
+        onDriveBackup={handleDriveBackup}
+        onDriveRestore={handleDriveRestore}
+        driveStatus={backupStatus}
       />
       <ConfirmModal 
           theme={activeTheme.colors}
