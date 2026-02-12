@@ -25,6 +25,9 @@ interface SettingsModalProps {
   onUpdateSettings?: (settings: ProfileSettings) => void;
   onResetSettings?: () => void;
   profileName?: string;
+  isGoogleSignedIn?: boolean;
+  autoSync?: boolean;
+  onToggleAutoSync?: () => void;
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ 
@@ -42,6 +45,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     onUpdateSettings,
     onResetSettings,
     profileName,
+    isGoogleSignedIn,
+    autoSync,
+    onToggleAutoSync
 }) => {
   if (!isOpen) return null;
 
@@ -85,10 +91,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
       aria-labelledby="settings-title"
     >
       <div
-        className={`${theme.modalBg} rounded-lg shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col transform transition-all duration-300 scale-95 opacity-0 animate-modal-enter`}
+        className={`${theme.modalBg} rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col transform transition-all duration-300 scale-95 opacity-0 animate-modal-enter`}
         onClick={(e) => e.stopPropagation()}
       >
-        <header className={`p-4 border-b ${theme.modalHeaderBorder} flex justify-between items-center sticky top-0 ${theme.modalBg}/80 backdrop-blur-sm`}>
+        <header className={`p-4 border-b ${theme.modalHeaderBorder} flex justify-between items-center sticky top-0 ${theme.modalBg}/80 backdrop-blur-md rounded-t-2xl z-10`}>
           <h2 id="settings-title" className={`text-2xl font-bold ${theme.textHeader}`}>Settings</h2>
           <button onClick={onClose} className={`${theme.textSecondary} hover:${theme.textPrimary} p-2 rounded-full ${theme.buttonHover} transition-colors`} aria-label="Close settings">
              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -96,74 +102,89 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             </svg>
           </button>
         </header>
-        <main className="p-6 overflow-y-auto">
+        <main className="p-6 overflow-y-auto space-y-8">
             
-            {/* Profile Goals & Limits Section */}
+            {/* Profile Goals Section */}
             {currentProfileSettings && onUpdateSettings && (
-                <>
-                    <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                             <h3 className={`text-lg font-semibold ${theme.textPrimary}`}>Goals & Limits ({profileName})</h3>
-                             <button 
-                                onClick={onResetSettings}
-                                className={`text-xs px-2 py-1 rounded ${theme.buttonHover} ${theme.textSecondary} hover:${theme.textPrimary}`}
-                             >
-                                Reset Defaults
-                             </button>
+                <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                         <h3 className={`text-lg font-bold ${theme.textHeader}`}>Profile Goals ({profileName})</h3>
+                         <button 
+                            onClick={onResetSettings}
+                            className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-md bg-black/5 ${theme.textSecondary} hover:bg-black/10 transition-colors`}
+                         >
+                            Defaults
+                         </button>
+                    </div>
+                   
+                    <div className="grid grid-cols-1 gap-4">
+                        <div>
+                            <label className={`block text-[10px] font-black uppercase tracking-widest ${theme.textSecondary} mb-2`}>Beads per Round</label>
+                            <input 
+                                type="number" 
+                                min="1"
+                                value={currentProfileSettings.beadsPerRound}
+                                onChange={(e) => handleGoalChange('beadsPerRound', e.target.value)}
+                                className={`w-full p-3 rounded-xl border ${theme.listItemBorder} bg-white shadow-sm font-bold ${theme.textPrimary} focus:outline-none focus:ring-2 focus:ring-amber-500/20`}
+                            />
                         </div>
-                       
-                        <div className="grid grid-cols-1 gap-4">
+                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className={`block text-sm font-medium ${theme.textSecondary} mb-1`}>Beads per Round</label>
+                                <label className={`block text-[10px] font-black uppercase tracking-widest ${theme.textSecondary} mb-2`}>Goal Type</label>
+                                <select 
+                                    value={currentProfileSettings.dailyGoal.type}
+                                    onChange={(e) => handleGoalChange('goalType', e.target.value)}
+                                    className={`w-full p-3 rounded-xl border ${theme.listItemBorder} bg-white shadow-sm font-bold ${theme.textPrimary} focus:outline-none focus:ring-2 focus:ring-amber-500/20`}
+                                >
+                                    <option value="rounds">Rounds</option>
+                                    <option value="beads">Beads</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className={`block text-[10px] font-black uppercase tracking-widest ${theme.textSecondary} mb-2`}>Target</label>
                                 <input 
                                     type="number" 
                                     min="1"
-                                    value={currentProfileSettings.beadsPerRound}
-                                    onChange={(e) => handleGoalChange('beadsPerRound', e.target.value)}
-                                    className={`w-full p-2 rounded-lg border ${theme.listItemBorder} bg-white ${theme.textPrimary} focus:outline-none focus:ring-2 focus:ring-opacity-50 focus:ring-blue-400`}
+                                    value={currentProfileSettings.dailyGoal.value}
+                                    onChange={(e) => handleGoalChange('goalValue', e.target.value)}
+                                    className={`w-full p-3 rounded-xl border ${theme.listItemBorder} bg-white shadow-sm font-bold ${theme.textPrimary} focus:outline-none focus:ring-2 focus:ring-amber-500/20`}
                                 />
-                            </div>
-                             <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className={`block text-sm font-medium ${theme.textSecondary} mb-1`}>Goal Type</label>
-                                    <select 
-                                        value={currentProfileSettings.dailyGoal.type}
-                                        onChange={(e) => handleGoalChange('goalType', e.target.value)}
-                                        className={`w-full p-2 rounded-lg border ${theme.listItemBorder} bg-white ${theme.textPrimary} focus:outline-none focus:ring-2 focus:ring-opacity-50 focus:ring-blue-400`}
-                                    >
-                                        <option value="rounds">Rounds</option>
-                                        <option value="beads">Beads</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className={`block text-sm font-medium ${theme.textSecondary} mb-1`}>Target</label>
-                                    <input 
-                                        type="number" 
-                                        min="1"
-                                        value={currentProfileSettings.dailyGoal.value}
-                                        onChange={(e) => handleGoalChange('goalValue', e.target.value)}
-                                        className={`w-full p-2 rounded-lg border ${theme.listItemBorder} bg-white ${theme.textPrimary} focus:outline-none focus:ring-2 focus:ring-opacity-50 focus:ring-blue-400`}
-                                    />
-                                </div>
                             </div>
                         </div>
                     </div>
-                    <div className={`border-t ${theme.modalHeaderBorder} my-6`}></div>
-                </>
+                </div>
+            )}
+
+            {/* Cloud Auto-Sync Section */}
+            {isGoogleSignedIn && (
+                <div className="space-y-4 pt-2">
+                    <h3 className={`text-lg font-bold ${theme.textHeader}`}>Cloud Sync</h3>
+                    <div className={`p-4 rounded-2xl ${theme.listItemBackground} border ${theme.listItemBorder} flex items-center justify-between shadow-sm`}>
+                        <div className="flex flex-col">
+                            <span className={`font-bold ${theme.textPrimary}`}>Auto-Sync Counts</span>
+                            <span className={`text-[10px] ${theme.textSecondary} uppercase font-black tracking-widest`}>Sync to Drive after activity</span>
+                        </div>
+                        <button 
+                            onClick={onToggleAutoSync}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${autoSync ? 'bg-amber-500' : 'bg-gray-200'}`}
+                        >
+                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${autoSync ? 'translate-x-6' : 'translate-x-1'}`} />
+                        </button>
+                    </div>
+                </div>
             )}
 
             <div className="space-y-4">
-                <h3 className={`text-lg font-semibold ${theme.textPrimary}`}>Color Theme</h3>
+                <h3 className={`text-lg font-bold ${theme.textHeader}`}>Appearance</h3>
                 <div className="grid grid-cols-2 gap-4">
                     {Object.values(themes).map(themeOption => (
                         <button 
                             key={themeOption.name} 
                             onClick={() => onThemeChange(themeOption.name)}
-                            className={`p-4 rounded-lg border-2 transition-all ${currentTheme === themeOption.name ? 'border-blue-500 shadow-md' : `${theme.listItemBorder} hover:border-gray-300`}`}
-                            aria-pressed={currentTheme === themeOption.name}
+                            className={`p-3 rounded-2xl border-2 transition-all group overflow-hidden ${currentTheme === themeOption.name ? 'border-amber-500 shadow-md scale-[1.02]' : 'border-transparent bg-white/50 hover:bg-white'}`}
                         >
-                            <span className={`block mb-2 font-semibold ${theme.textPrimary}`}>{themeOption.displayName}</span>
-                            <div className="flex h-8 w-full rounded overflow-hidden">
+                            <span className={`block mb-2 text-[10px] font-black uppercase tracking-widest ${currentTheme === themeOption.name ? 'text-amber-600' : theme.textSecondary}`}>{themeOption.displayName}</span>
+                            <div className="flex h-10 w-full rounded-lg overflow-hidden border border-black/5">
                                 {themeOption.previewColors.map((color, index) => (
                                     <div key={index} style={{ backgroundColor: color, flex: 1 }} />
                                 ))}
@@ -173,66 +194,50 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
             </div>
 
-            <div className={`border-t ${theme.modalHeaderBorder} my-6`}></div>
-
             <div className="space-y-4">
-                <h3 className={`text-lg font-semibold ${theme.textPrimary}`}>Bead Sound</h3>
-                <p className={`${theme.textSecondary} text-sm`}>
-                    Current: {isCustomSoundSet ? 'Custom Sound' : 'Default Sound'}
-                </p>
-                <div className="flex items-center space-x-2">
-                    <input
-                        type="file"
-                        accept="audio/*"
-                        ref={fileInputRef}
-                        onChange={handleFileChange}
-                        className="hidden"
-                        aria-hidden="true"
-                        id="sound-upload-input"
-                    />
-                    <button
-                        onClick={handleUploadClick}
-                        className={`w-full text-center px-4 py-2 ${theme.textPrimary} ${theme.cancelButton} ${theme.cancelButtonHover} rounded-lg font-semibold transition-colors`}
-                        aria-label="Upload a custom bead sound"
-                    >
-                        Upload Sound
-                    </button>
-                    <button
-                        onClick={onResetSound}
-                        disabled={!isCustomSoundSet}
-                        className={`px-4 py-2 ${theme.textSecondary} hover:${theme.textPrimary} ${theme.buttonHover} rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
-                        aria-label="Reset bead sound to default"
-                    >
-                        Reset
-                    </button>
+                <h3 className={`text-lg font-bold ${theme.textHeader}`}>Sound Options</h3>
+                <div className={`p-4 rounded-2xl ${theme.listItemBackground} border ${theme.listItemBorder} space-y-4 shadow-sm`}>
+                    <div className="flex items-center justify-between">
+                        <span className={`text-[10px] font-black uppercase tracking-widest ${theme.textSecondary}`}>Mode</span>
+                        <span className={`font-bold ${theme.textPrimary}`}>{isCustomSoundSet ? 'Custom Sound' : 'Default'}</span>
+                    </div>
+                    <div className="flex space-x-2">
+                        <input type="file" accept="audio/*" ref={fileInputRef} onChange={handleFileChange} className="hidden" id="sound-upload-input" />
+                        <button
+                            onClick={handleUploadClick}
+                            className="flex-1 py-2 text-xs font-bold rounded-xl bg-amber-500 text-white shadow-sm active:scale-95 transition-transform"
+                        >
+                            Upload New
+                        </button>
+                        <button
+                            onClick={onResetSound}
+                            disabled={!isCustomSoundSet}
+                            className="flex-1 py-2 text-xs font-bold rounded-xl bg-black/5 text-gray-600 hover:bg-black/10 transition-colors disabled:opacity-30"
+                        >
+                            Reset
+                        </button>
+                    </div>
                 </div>
             </div>
+
             {canInstall && (
-              <>
-                <div className={`border-t ${theme.modalHeaderBorder} my-6`}></div>
-                <div className="space-y-4">
-                  <h3 className={`text-lg font-semibold ${theme.textPrimary}`}>Install App</h3>
-                  <p className={`${theme.textSecondary} text-sm`}>
-                    Install this app on your device for quick access and offline use.
-                  </p>
+                <div className="pt-4 pb-2">
                   <button
                     onClick={onInstall}
-                    className={`w-full flex items-center justify-center text-center px-4 py-2 ${theme.textPrimary} ${theme.cancelButton} ${theme.cancelButtonHover} rounded-lg font-semibold transition-colors`}
-                    aria-label="Install the application"
+                    className="w-full flex items-center justify-center py-4 bg-amber-600 text-white rounded-2xl shadow-lg shadow-amber-600/20 font-bold active:scale-95 transition-transform"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
-                    Install App
+                    Install for Offline Use
                   </button>
                 </div>
-              </>
             )}
         </main>
       </div>
       <style>{`
         @keyframes modal-enter { to { opacity: 1; transform: scale(1); } }
-        .animate-modal-enter { animation: modal-enter 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
+        .animate-modal-enter { animation: modal-enter 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
       `}</style>
     </div>
   );

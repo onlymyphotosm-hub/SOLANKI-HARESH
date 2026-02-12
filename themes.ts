@@ -1,3 +1,4 @@
+
 export interface Theme {
   name: string;
   displayName: string;
@@ -22,6 +23,8 @@ export interface Theme {
     cancelButton: string;
     cancelButtonHover: string;
     metaThemeColor: string;
+    // Added missing cardBg property used in App.tsx components
+    cardBg: string;
   };
 }
 
@@ -50,6 +53,8 @@ export const themes: Record<string, Theme> = {
       confirmButton: 'bg-red-500 hover:bg-red-600',
       cancelButton: 'bg-amber-200',
       cancelButtonHover: 'hover:bg-amber-300',
+      // Added missing cardBg property
+      cardBg: 'bg-white/40',
     }
   },
   forest: {
@@ -76,6 +81,8 @@ export const themes: Record<string, Theme> = {
       confirmButton: 'bg-red-500 hover:bg-red-600',
       cancelButton: 'bg-green-200',
       cancelButtonHover: 'hover:bg-green-300',
+      // Added missing cardBg property
+      cardBg: 'bg-white/40',
     }
   },
   ocean: {
@@ -102,6 +109,8 @@ export const themes: Record<string, Theme> = {
       confirmButton: 'bg-red-500 hover:bg-red-600',
       cancelButton: 'bg-blue-200',
       cancelButtonHover: 'hover:bg-blue-300',
+      // Added missing cardBg property
+      cardBg: 'bg-white/40',
     }
   },
   rose: {
@@ -128,6 +137,8 @@ export const themes: Record<string, Theme> = {
       confirmButton: 'bg-red-500 hover:bg-red-600',
       cancelButton: 'bg-rose-200',
       cancelButtonHover: 'hover:bg-rose-300',
+      // Added missing cardBg property
+      cardBg: 'bg-white/40',
     }
   }
 };
